@@ -19,3 +19,7 @@ until = get_env_var(var="UNTIL", optional=True)
 ```
 
 List of strings
+```python
+tables_list = get_env_var(var="TABLES")
+tables = get_list_of_strings(input=tables_list)
+```
