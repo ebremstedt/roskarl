@@ -1,6 +1,6 @@
 # Roskarl
 
-Roskarl is a tiny module for environment variables.
+Is a **tiny** module for environment variables.
 
 ## How to install
 
@@ -10,16 +10,30 @@ pip install roskarl
 
 ## Example usage
 
-Single variable:
-
 ```python
-from roskarl import get_env_var
-since = get_env_var(var="SINCE")
-until = get_env_var(var="UNTIL", optional=True)
+from roskarl import env_var
 ```
 
-List of strings
+### str
 ```python
-tables_list = get_env_var(var="TABLES")
-tables = get_list_of_strings(input=tables_list)
+value = env_var(var="STR_VAR")
 ```
+returns **`str`**
+
+### bool
+```python
+value = env_var(var="BOOL_VAR", type_=bool)
+```
+returns **`bool`** if value.upper() is "TRUE" or "FALSE
+
+### list
+```python
+value = env_var(var="LIST_VAR", type_=list, separator="|")
+```
+returns **`list`** if value is splittable by separator
+
+### int
+```python
+value = env_var(var="INT_VAR", type_=int)
+```
+returns **`int`** if value is numeric

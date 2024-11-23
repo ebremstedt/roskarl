@@ -1,52 +1,50 @@
 import os
-from enum import Enum, auto
+from typing import Optional, Type
 
 
-class EnvVarType(Enum):
-    STRING_VAR = auto()
-    LIST_VAR = auto()
-    BOOL_VAR = auto()
-    INT_VAR = auto()
 
-
-def get_env_var(
-    var: str,
-    env_var_type: EnvVarType = EnvVarType.STRING_VAR,
-    list_separator: str = ",",
+def env_var(
+    name: str,
+    type_: Optional[Type] = str,
+    separator: Optional[str] = ",",
 ) -> str | list | bool | int:
     """Get environment variable
 
     Parameters:
-        var: the var to get
-        env_var_type (EnvVarType): the kind of value you expect to retrieve from var
-        list_separator: if getting list, which separator to use
+        var (str): the var to get
+        type_ (Type): the kind of value you expect to retrieve from var
+        separator (str):  if getting list, which separator to use
 
     Returns:
         value of env var
     """
-    env_var = os.environ.get(var)
-    if not env_var:
-        raise KeyError(f"Missing required environment variable for '{var}'.")
+    value = os.environ.get(name)
+    if not value:
+        raise KeyError(f"Missing required environment variable for '{name}'.")
 
-    if env_var_type == EnvVarType.STRING_VAR:
-        return env_var
+    allowed_types = [int, str, list, bool]
+    if type_ not in allowed_types:
+        raise ValueError(f"Type {type_} is not allowed. Use one of {', '.join(allowed_types)}" )
 
-    if env_var_type == EnvVarType.LIST_VAR:
+    if type_ == str:
+        return value
+
+    if type_ == list:
         try:
-            return [item.strip() for item in var.split(list_separator)]
+            return [item.strip() for item in value.split(separator)]
         except Exception as e:
-            raise ValueError(f"Error parsing list from env var '{var}': {e}")
+            raise ValueError(f"Error parsing list from env var '{name}': {e}")
 
-    if env_var_type == EnvVarType.BOOL_VAR:
-        if env_var.upper() == "TRUE":
+    if type_ == bool:
+        if value.upper() == "TRUE":
             return True
-        if env_var.upper() == "False":
+        if value.upper() == "FALSE":
             return False
 
-        raise ValueError(f"Bool must be set to true or false '{env_var}': {e}")
+        raise ValueError(f"Bool must be set to true or false (case insensitive), not: '{value}'")
 
-    if env_var_type == EnvVarType.INT_VAR:
-        if env_var.isnumeric():
-            return int(env_var)
+    if type_ == int:
+        if value.isnumeric():
+            return int(value)
 
-        raise ValueError(f"Int must be set to a valid integer '{env_var}': {e}")
+        raise ValueError(f"Int must be set to a valid integer, not: '{value}'")
