@@ -24,7 +24,7 @@ returns **`str`**
 ```python
 value = env_var(var="BOOL_VAR", type_=bool)
 ```
-returns **`bool`** if value.upper() is "TRUE" or "FALSE
+returns **`bool`** if environment variable value uppercase is `TRUE` or `FALSE`
 
 ### list
 ```python

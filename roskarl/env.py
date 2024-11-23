@@ -2,7 +2,6 @@ import os
 from typing import Optional, Type
 
 
-
 def env_var(
     name: str,
     type_: Optional[Type] = str,
@@ -24,7 +23,9 @@ def env_var(
 
     allowed_types = [int, str, list, bool]
     if type_ not in allowed_types:
-        raise ValueError(f"Type {type_} is not allowed. Use one of {', '.join(allowed_types)}" )
+        raise ValueError(
+            f"Type {type_} is not allowed. Use one of {', '.join(allowed_types)}"
+        )
 
     if type_ == str:
         return value
@@ -41,7 +42,9 @@ def env_var(
         if value.upper() == "FALSE":
             return False
 
-        raise ValueError(f"Bool must be set to true or false (case insensitive), not: '{value}'")
+        raise ValueError(
+            f"Bool must be set to true or false (case insensitive), not: '{value}'"
+        )
 
     if type_ == int:
         if value.isnumeric():

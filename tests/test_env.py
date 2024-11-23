@@ -14,7 +14,6 @@ class TestGetEnvVar(TestCase):
 
         assert env_var_value == real_value
 
-
     def test_get_env_var_empty(self):
         env_var_name = "this_var_isnt_set_at_all"
 
@@ -74,8 +73,7 @@ class TestGetEnvVar(TestCase):
 
         real_value = env_var(name=env_var_name, type_=env_type_)
 
-        assert real_value == ["A","B","C","D"]
-
+        assert real_value == ["A", "B", "C", "D"]
 
     def test_get_list_var_with_separator(self):
         env_var_value = "A|B|C|D"
@@ -86,4 +84,4 @@ class TestGetEnvVar(TestCase):
 
         real_value = env_var(name=env_var_name, type_=env_type_, separator=separator)
 
-        assert real_value == ["A","B","C","D"]
+        assert real_value == ["A", "B", "C", "D"]
