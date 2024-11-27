@@ -14,12 +14,6 @@ class TestGetEnvVar(TestCase):
 
         assert env_var_value == real_value
 
-    def test_get_env_var_empty(self):
-        env_var_name = "this_var_isnt_set_at_all"
-
-        with self.assertRaises(KeyError):
-            env_var(name=env_var_name)
-
     def test_get_int_var_valid_value(self):
         env_var_value = "5"
         env_var_name = "x"

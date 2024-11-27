@@ -1,12 +1,16 @@
 import os
 from typing import Optional, Type
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+from croniter import croniter
 
 
 def env_var(
     name: str,
     type_: Optional[Type] = str,
     separator: Optional[str] = ",",
-) -> str | list | bool | int:
+    cron: bool = False,
+    tz: bool = False,
+) -> Optional[str | list | bool | int | float]:
     """Get environment variable
 
     Parameters:
@@ -17,17 +21,26 @@ def env_var(
     Returns:
         value of env var
     """
-    value = os.environ.get(name)
-    if not value:
-        raise KeyError(f"Missing required environment variable for '{name}'.")
-
-    allowed_types = [int, str, list, bool]
+    allowed_types = [int, str, list, bool, float]
     if type_ not in allowed_types:
         raise ValueError(
             f"Type {type_} is not allowed. Use one of {', '.join(allowed_types)}"
         )
 
+    value = os.environ.get(name)
+    if not value:
+        print(f"{name} is either not set or set to None.")
+        return None
+
     if type_ == str:
+        if cron:
+            if not croniter.is_valid(expression=value):
+                raise ValueError(f"Value is not a valid cron expression.")
+        if tz:
+            try:
+                ZoneInfo(value)
+            except ZoneInfoNotFoundError as e:
+                raise ValueError(f"Timezone string was not valid. {e}")
         return value
 
     if type_ == list:
@@ -41,13 +54,12 @@ def env_var(
             return True
         if value.upper() == "FALSE":
             return False
-
         raise ValueError(
             f"Bool must be set to true or false (case insensitive), not: '{value}'"
         )
 
     if type_ == int:
-        if value.isnumeric():
-            return int(value)
+        return int(value)
 
-        raise ValueError(f"Int must be set to a valid integer, not: '{value}'")
+    if type_ == float:
+        return float(value)
