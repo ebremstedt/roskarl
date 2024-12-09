@@ -6,6 +6,8 @@ from roskarl.env import (
     env_var_list,
     env_var,
     env_var_tz,
+    require,
+    EnvironmentVariableNotSet,
 )
 
 __all__ = [
@@ -16,4 +18,5 @@ __all__ = [
     "env_var_list",
     "env_var",
     "env_var_tz",
+    "require" "EnvironmentVariableNotSet",
 ]

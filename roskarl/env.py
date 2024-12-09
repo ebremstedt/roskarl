@@ -3,8 +3,19 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from croniter import croniter
 
 
+class EnvironmentVariableNotSet(Exception):
+    """Custom error raised when an environment variable is not set."""
+
+    pass
+
+
 def print_if_not_set(name: str):
-    print(f"{name} is either not set or set to None.")
+    print(f"{name} is either not set or set to None")
+
+
+def require(condition: bool, message: str):
+    if not condition:
+        raise EnvironmentVariableNotSet(message)
 
 
 def env_var(name: str) -> str | None:
@@ -101,9 +112,9 @@ def env_var_bool(name: str) -> bool | None:
         print_if_not_set(name=name)
         return None
 
-    if value.upper() == "TRUE":
+    if value.upper() in ["TRUE", "YES", "ON"]:
         return True
-    if value.upper() == "FALSE":
+    if value.upper() in ["FALSE", "NO", "OFF"]:
         return False
     raise ValueError(
         f"Bool must be set to true or false (case insensitive), not: '{value}'"
