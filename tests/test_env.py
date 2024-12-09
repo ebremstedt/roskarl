@@ -1,81 +1,93 @@
 import os
-from roskarl.env import env_var
-from unittest import TestCase
+import unittest
+
+from roskarl import (
+    env_var_str,
+    env_var_cron,
+    env_var_tz,
+    env_var_list,
+    env_var_bool,
+    env_var_int,
+    env_var_float
+)
 
 
-class TestGetEnvVar(TestCase):
-    def test_get_env_var_string(self):
-        env_var_value = "hello"
-        env_var_name = "x"
+class TestEnvVarUtils(unittest.TestCase):
+    def setUp(self):
+        self.original_environ = os.environ.copy()
 
-        os.environ[env_var_name] = env_var_value
+    def tearDown(self):
+        os.environ.clear()
+        os.environ.update(self.original_environ)
 
-        real_value = env_var(name=env_var_name)
+    def test_env_var_str_set(self):
+        os.environ['TEST_STR'] = 'hello'
+        self.assertEqual(env_var_str('TEST_STR'), 'hello')
 
-        assert env_var_value == real_value
+    def test_env_var_cron_valid(self):
+        os.environ['TEST_CRON'] = '0 0 * * *'
+        self.assertEqual(env_var_cron('TEST_CRON'), '0 0 * * *')
 
-    def test_get_int_var_valid_value(self):
-        env_var_value = "5"
-        env_var_name = "x"
-        os.environ[env_var_name] = env_var_value
+    def test_env_var_cron_invalid(self):
+        os.environ['TEST_CRON'] = 'invalid cron'
+        with self.assertRaises(ValueError) as context:
+            env_var_cron('TEST_CRON')
+        self.assertIn('Value is not a valid cron expression.', str(context.exception))
 
-        real_value = env_var(name=env_var_name, type_=int)
+    def test_env_var_tz_valid(self):
+        os.environ['TEST_TZ'] = 'America/New_York'
+        self.assertEqual(env_var_tz('TEST_TZ'), 'America/New_York')
 
-        assert type(real_value) == type(529835)
+    def test_env_var_tz_invalid(self):
+        os.environ['TEST_TZ'] = 'Invalid/Timezone'
+        with self.assertRaises(ValueError) as context:
+            env_var_tz('TEST_TZ')
+        self.assertIn('Timezone string was not valid', str(context.exception))
 
-    def test_get_int_var_invalid_value(self):
-        env_var_value = "5aioaiwdm"
-        env_var_name = "x"
-        env_type_ = int
-        os.environ[env_var_name] = env_var_value
+    def test_env_var_list_default_separator(self):
+        os.environ['TEST_LIST'] = 'a, b, c'
+        self.assertEqual(env_var_list('TEST_LIST'), ['a', 'b', 'c'])
 
+    def test_env_var_list_custom_separator(self):
+        os.environ['TEST_LIST'] = 'a;b;c'
+        self.assertEqual(env_var_list('TEST_LIST', separator=';'), ['a', 'b', 'c'])
+
+    def test_env_var_bool_true(self):
+        os.environ['TEST_BOOL'] = 'TRUE'
+        self.assertTrue(env_var_bool('TEST_BOOL'))
+        os.environ['TEST_BOOL'] = 'true'
+        self.assertTrue(env_var_bool('TEST_BOOL'))
+
+    def test_env_var_bool_false(self):
+        os.environ['TEST_BOOL'] = 'FALSE'
+        self.assertFalse(env_var_bool('TEST_BOOL'))
+        os.environ['TEST_BOOL'] = 'false'
+        self.assertFalse(env_var_bool('TEST_BOOL'))
+
+    def test_env_var_bool_invalid(self):
+        os.environ['TEST_BOOL'] = 'not-a-bool'
+        with self.assertRaises(ValueError) as context:
+            env_var_bool('TEST_BOOL')
+        self.assertIn("Bool must be set to true or false", str(context.exception))
+
+    def test_env_var_int(self):
+        os.environ['TEST_INT'] = '42'
+        self.assertEqual(env_var_int('TEST_INT'), 42)
+
+    def test_env_var_int_invalid(self):
+        os.environ['TEST_INT'] = 'not-an-int'
         with self.assertRaises(ValueError):
-            env_var(name=env_var_name, type_=env_type_)
+            env_var_int('TEST_INT')
 
-    def test_get_bool_var_valid_value_true(self):
-        env_var_value = "true"
-        env_var_name = "x"
-        os.environ[env_var_name] = env_var_value
+    def test_env_var_float(self):
+        os.environ['TEST_FLOAT'] = '3.14'
+        self.assertEqual(env_var_float('TEST_FLOAT'), 3.14)
 
-        real_value = env_var(name=env_var_name, type_=bool)
-
-        assert real_value == True
-
-    def test_get_bool_var_valid_value_false_chaos_case(self):
-        env_var_value = "FaLsE"
-        env_var_name = "x"
-        os.environ[env_var_name] = env_var_value
-
-        real_value = env_var(name=env_var_name, type_=bool)
-
-        assert real_value == False
-
-    def test_get_bool_var_valid_value_invalid_value(self):
-        env_var_value = "do ducks wear jackets"
-        env_var_name = "x"
-        env_type_ = bool
-        os.environ[env_var_name] = env_var_value
-
+    def test_env_var_float_invalid(self):
+        os.environ['TEST_FLOAT'] = 'not-a-float'
         with self.assertRaises(ValueError):
-            env_var(name=env_var_name, type_=env_type_)
+            env_var_float('TEST_FLOAT')
 
-    def test_get_list_var(self):
-        env_var_value = "A,B,C,D"
-        env_var_name = "proper_list_yo"
-        env_type_ = list
-        os.environ[env_var_name] = env_var_value
 
-        real_value = env_var(name=env_var_name, type_=env_type_)
-
-        assert real_value == ["A", "B", "C", "D"]
-
-    def test_get_list_var_with_separator(self):
-        env_var_value = "A|B|C|D"
-        env_var_name = "x"
-        env_type_ = list
-        separator = "|"
-        os.environ[env_var_name] = env_var_value
-
-        real_value = env_var(name=env_var_name, type_=env_type_, separator=separator)
-
-        assert real_value == ["A", "B", "C", "D"]
+if __name__ == '__main__':
+    unittest.main()
