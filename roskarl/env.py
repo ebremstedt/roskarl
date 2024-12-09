@@ -1,65 +1,144 @@
 import os
-from typing import Optional, Type
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from croniter import croniter
 
 
-def env_var(
-    name: str,
-    type_: Optional[Type] = str,
-    separator: Optional[str] = ",",
-    cron: bool = False,
-    tz: bool = False,
-) -> Optional[str | list | bool | int | float]:
+def print_if_not_set(name: str):
+    print(f"{name} is either not set or set to None.")
+
+
+def env_var(name: str) -> str | None:
     """Get environment variable
 
     Parameters:
-        var (str): the var to get
-        type_ (Type): the kind of value you expect to retrieve from var
+        name (str): the name of the env var
+
+    Returns:
+        value of env var
+    """
+    value = os.environ.get(name)
+    if not value:
+        print_if_not_set(name=name)
+        return None
+
+    return value
+
+
+def env_var_cron(name: str) -> str | None:
+    """Get environment variable
+
+    Parameters:
+        name (str): the name of the env var
+
+    Returns:
+        value of env var
+    """
+    value = os.environ.get(name)
+    if not value:
+        print_if_not_set(name=name)
+        return None
+
+    if not croniter.is_valid(expression=value):
+        raise ValueError("Value is not a valid cron expression.")
+
+    return value
+
+
+def env_var_tz(name: str) -> str | None:
+    """Get environment variable
+
+    Parameters:
+        name (str): the name of the env var
+
+    Returns:
+        value of env var
+    """
+    value = os.environ.get(name)
+    if not value:
+        print_if_not_set(name=name)
+        return None
+
+    try:
+        ZoneInfo(value)
+    except ZoneInfoNotFoundError as e:
+        raise ValueError(f"Timezone string was not valid. {e}")
+
+    return value
+
+
+def env_var_list(name: str, separator: str = ",") -> list | None:
+    """Get environment variable
+
+    Parameters:
+        name (str): the name of the env var
         separator (str):  if getting list, which separator to use
 
     Returns:
         value of env var
     """
-    allowed_types = [int, str, list, bool, float]
-    if type_ not in allowed_types:
-        raise ValueError(
-            f"Type {type_} is not allowed. Use one of {', '.join(allowed_types)}"
-        )
-
     value = os.environ.get(name)
     if not value:
-        print(f"{name} is either not set or set to None.")
+        print_if_not_set(name=name)
         return None
 
-    if type_ == str:
-        if cron:
-            if not croniter.is_valid(expression=value):
-                raise ValueError(f"Value is not a valid cron expression.")
-        if tz:
-            try:
-                ZoneInfo(value)
-            except ZoneInfoNotFoundError as e:
-                raise ValueError(f"Timezone string was not valid. {e}")
-        return value
+    try:
+        return [item.strip() for item in value.split(separator)]
+    except Exception as e:
+        raise ValueError(f"Error parsing list from env var '{name}': {e}")
 
-    if type_ == list:
-        try:
-            return [item.strip() for item in value.split(separator)]
-        except Exception as e:
-            raise ValueError(f"Error parsing list from env var '{name}': {e}")
 
-    if type_ == bool:
-        if value.upper() == "TRUE":
-            return True
-        if value.upper() == "FALSE":
-            return False
-        raise ValueError(
-            f"Bool must be set to true or false (case insensitive), not: '{value}'"
-        )
+def env_var_bool(name: str) -> bool | None:
+    """Get environment variable
 
-    if type_ == int:
-        return int(value)
+    Parameters:
+        name (str): the name of the env var
 
-    if type_ == float:
-        return float(value)
+    Returns:
+        value of env var
+    """
+    value = os.environ.get(name)
+    if not value:
+        print_if_not_set(name=name)
+        return None
+
+    if value.upper() == "TRUE":
+        return True
+    if value.upper() == "FALSE":
+        return False
+    raise ValueError(
+        f"Bool must be set to true or false (case insensitive), not: '{value}'"
+    )
+
+
+def env_var_int(name: str) -> int | None:
+    """Get environment variable
+
+    Parameters:
+        name (str): the name of the env var
+
+    Returns:
+        value of env var
+    """
+    value = os.environ.get(name)
+    if not value:
+        print_if_not_set(name=name)
+        return None
+
+    return int(value)
+
+
+def env_var_float(name: str) -> float | None:
+    """Get environment variable
+
+    Parameters:
+        name (str): the name of the env var
+
+    Returns:
+        value of env var
+    """
+    value = os.environ.get(name)
+    if not value:
+        print_if_not_set(name=name)
+        return None
+
+    return float(value)
