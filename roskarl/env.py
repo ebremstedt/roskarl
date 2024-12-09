@@ -7,7 +7,7 @@ def print_if_not_set(name: str):
     print(f"{name} is either not set or set to None.")
 
 
-def env_var_str(name: str) -> str | None:
+def env_var(name: str) -> str | None:
     """Get environment variable
 
     Parameters:
