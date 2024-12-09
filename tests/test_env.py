@@ -2,7 +2,7 @@ import os
 import unittest
 
 from roskarl import (
-    env_var_str,
+    env_var,
     env_var_cron,
     env_var_tz,
     env_var_list,
@@ -22,7 +22,7 @@ class TestEnvVarUtils(unittest.TestCase):
 
     def test_env_var_str_set(self):
         os.environ['TEST_STR'] = 'hello'
-        self.assertEqual(env_var_str('TEST_STR'), 'hello')
+        self.assertEqual(env_var('TEST_STR'), 'hello')
 
     def test_env_var_cron_valid(self):
         os.environ['TEST_CRON'] = '0 0 * * *'
