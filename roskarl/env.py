@@ -188,12 +188,12 @@ def env_var_dsn(name: str) -> DSN | None:
         return None
 
     try:
-        protocol_match = re.match(r'^([^:]+)://', name)
+        protocol_match = re.match(r'^([^:]+)://', value)
         if not protocol_match:
             raise ValueError('Invalid DSN: Protocol not found')
 
         protocol = protocol_match.group(1)
-        remaining = name[len(protocol_match.group(0)):]
+        remaining = value[len(protocol_match.group(0)):]
 
         last_at = remaining.rindex('@')
         credentials = remaining[:last_at]
