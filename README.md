@@ -4,7 +4,7 @@ Is a **tiny** module for environment variables.
 
 ## Requires
 
-Python 3.13.0
+Python 3.12.0
 
 ## How to install
 
