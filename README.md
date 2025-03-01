@@ -2,6 +2,10 @@
 
 Is a **tiny** module for environment variables.
 
+## Requires
+
+Python 3.12.0
+
 ## How to install
 
 ```sh
@@ -11,29 +15,65 @@ pip install roskarl
 ## Example usage
 
 ```python
-from roskarl import env_var
+from roskarl.env import (
+    env_var_bool,
+    env_var_cron,
+    env_var_float,
+    env_var_int,
+    env_var_list,
+    env_var,
+    env_var_tz,
+    env_var_dsn,
+    DSN
+)
 ```
 
 ### str
 ```python
-value = env_var(var="STR_VAR")
+value = env_var(name="STR_VAR")
 ```
 returns **`str`**
 
 ### bool
 ```python
-value = env_var(var="BOOL_VAR", type_=bool)
+value = env_var_bool(name="BOOL_VAR")
 ```
-returns **`bool`** if environment variable value uppercase is `TRUE` or `FALSE`
+
+### tz
+```python
+value = env_var_tz(name="TZ_VAR")
+```
 
 ### list
 ```python
-value = env_var(var="LIST_VAR", type_=list, separator="|")
+value = env_var_list(name="LIST_VAR", separator="|")
 ```
 returns **`list`** if value is splittable by separator
 
 ### int
 ```python
-value = env_var(var="INT_VAR", type_=int)
+value = env_var_int(name="INT_VAR")
 ```
 returns **`int`** if value is numeric
+
+### float
+```python
+value = env_var_float(name="INT_VAR")
+```
+returns **`float`** if value is float
+
+### cron
+```python
+value = env_var_cron(name="CRON_EXPRESSION_VAR")
+```
+
+### DSN
+```python
+value = env_var_dsn(name="DSN_VAR", type)
+```
+returns **`DSN`** object if value is like a dsn
+
+needs to be formatted like this:
+```
+postgresql://username:password@hostname:5432/database_name
+```
