@@ -4,12 +4,13 @@ from croniter import croniter
 from dataclasses import dataclass
 from urllib.parse import unquote
 import re
+from typing import List, Dict, Optional, Any
 
 def print_if_not_set(name: str):
     print(f"{name} is either not set or set to None.")
 
 
-def env_var(name: str) -> str | None:
+def env_var(name: str) -> Optional[str]:
     """Get environment variable
 
     Parameters:
@@ -26,7 +27,7 @@ def env_var(name: str) -> str | None:
     return value
 
 
-def env_var_cron(name: str) -> str | None:
+def env_var_cron(name: str) -> Optional[str]:
     """Get environment variable
 
     Parameters:
@@ -46,7 +47,7 @@ def env_var_cron(name: str) -> str | None:
     return value
 
 
-def env_var_tz(name: str) -> str | None:
+def env_var_tz(name: str) -> Optional[str]:
     """Get environment variable
 
     Parameters:
@@ -68,7 +69,7 @@ def env_var_tz(name: str) -> str | None:
     return value
 
 
-def env_var_list(name: str, separator: str = ",") -> list | None:
+def env_var_list(name: str, separator: str = ",") -> Optional[List[str]]:
     """Get environment variable
 
     Parameters:
@@ -89,7 +90,7 @@ def env_var_list(name: str, separator: str = ",") -> list | None:
         raise ValueError(f"Error parsing list from env var '{name}': {e}")
 
 
-def env_var_bool(name: str) -> bool | None:
+def env_var_bool(name: str) -> Optional[bool]:
     """Get environment variable
 
     Parameters:
@@ -112,7 +113,7 @@ def env_var_bool(name: str) -> bool | None:
     )
 
 
-def env_var_int(name: str) -> int | None:
+def env_var_int(name: str) -> Optional[int]:
     """Get environment variable
 
     Parameters:
@@ -129,7 +130,7 @@ def env_var_int(name: str) -> int | None:
     return int(value)
 
 
-def env_var_float(name: str) -> float | None:
+def env_var_float(name: str) -> Optional[float]:
     """Get environment variable
 
     Parameters:
@@ -152,15 +153,15 @@ class DSN:
     username: str
     password: str
     hostname: str
-    port: int | None
-    database: int | None
+    port: Optional[int]
+    database: Optional[int]
 
     def __str__(self) -> str:
         port_str = f":{self.port}" if self.port else ""
         db_str = f"/{self.database}" if self.database else ""
         return f"{self.protocol}://{self.username}:****@{self.hostname}{port_str}{db_str}"
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> Dict[str, Any]:
         return {
             'protocol': self.protocol,
             'username': self.username,
@@ -170,7 +171,7 @@ class DSN:
             'database': self.database
         }
 
-def env_var_dsn(name: str) -> DSN | None:
+def env_var_dsn(name: str) -> Optional[DSN]:
     """Get environment variable with DSN
 
     Format required:
