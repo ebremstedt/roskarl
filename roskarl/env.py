@@ -162,9 +162,7 @@ class DSN:
     password: str
     hostname: str
     port: Optional[int] = None
-    database: Optional[str] = (
-        None  # Changed from int to str - database names are strings
-    )
+    database: Optional[str] = None
     connection_string: str = field(init=False, repr=False)
 
     def __post_init__(self):
