@@ -68,6 +68,16 @@ value = env_var_cron(name="CRON_EXPRESSION_VAR")
 ```
 
 ### DSN
+
+Note: if you use special characters in the password, these must be URL-encoded
+
+```python
+from urllib.parse import quote
+password = 'My$ecret!Pass@2024'
+encoded = quote(password, safe='')
+print(encoded)  # My%24ecret%21Pass%402024 <--- use this
+```
+
 ```python
 value = env_var_dsn(name="DSN_VAR", type)
 ```
