@@ -150,13 +150,6 @@ def env_var_float(name: str) -> Optional[float]:
 
 @dataclass
 class DSN:
-    """
-    Data Source Name (DSN) class for database connection information.
-
-    Parses and stores components of a database connection string, providing
-    both a secure string representation and full connection string access.
-    """
-
     protocol: str
     username: str
     password: str
@@ -165,18 +158,16 @@ class DSN:
     database: Optional[str] = None
     connection_string: str = field(init=False, repr=False)
 
-    def __post_init__(self):
-        """Generate the connection string after initialization."""
+    def __post_init__(self) -> None:
         port_str = f":{self.port}" if self.port is not None else ""
         db_str = f"/{self.database}" if self.database is not None else ""
 
-        quoted_username = quote(self.username)
-        quoted_password = quote(self.password)
+        quoted_username = quote(self.username, safe="")
+        quoted_password = quote(self.password, safe="")
 
         self.connection_string = f"{self.protocol}://{quoted_username}:{quoted_password}@{self.hostname}{port_str}{db_str}"
 
     def __str__(self) -> str:
-        """Return a string representation with the password masked."""
         port_str = f":{self.port}" if self.port is not None else ""
         db_str = f"/{self.database}" if self.database is not None else ""
         return (
@@ -184,7 +175,6 @@ class DSN:
         )
 
     def to_dict(self) -> Dict[str, Any]:
-        """Convert the DSN to a dictionary."""
         return {
             "protocol": self.protocol,
             "username": self.username,
@@ -196,17 +186,6 @@ class DSN:
 
 
 def env_var_dsn(name: str) -> Optional[DSN]:
-    """Get environment variable with DSN
-
-    Format required:
-        mssql://user:password@hostname:port/catalog
-
-    Parameters:
-        name (str): the name of the env var
-
-    Returns:
-        value of env var formatted as a DSN object
-    """
     value = os.environ.get(name)
     if not value:
         print_if_not_set(name=name)
@@ -220,20 +199,40 @@ def env_var_dsn(name: str) -> Optional[DSN]:
         protocol = protocol_match.group(1)
         remaining = value[len(protocol_match.group(0)) :]
 
-        last_at = remaining.rindex("@")
-        credentials = remaining[:last_at]
-        host_part = remaining[last_at + 1 :]
+        # Parse using regex to handle URL-encoded @ symbols
+        auth_host_match = re.match(r"^(.+?)@([^@]+)$", remaining)
+        if not auth_host_match:
+            raise ValueError("Invalid DSN: No @ separator found")
 
-        first_colon = credentials.index(":")
-        username = unquote(credentials[:first_colon])
-        password = unquote(credentials[first_colon + 1 :])
+        credentials = auth_host_match.group(1)
+        host_part = auth_host_match.group(2)
+
+        # Find the first unencoded colon for username:password separator
+        colon_pos = None
+        i = 0
+        while i < len(credentials):
+            if credentials[i] == ":":
+                # Check if this colon is URL-encoded (%3A)
+                if i >= 3 and credentials[i - 3 : i] == "%3A":
+                    i += 1
+                    continue
+                else:
+                    colon_pos = i
+                    break
+            i += 1
+
+        if colon_pos is None:
+            raise ValueError("Invalid DSN: No colon separator found in credentials")
+
+        username = unquote(credentials[:colon_pos])
+        password = unquote(credentials[colon_pos + 1 :])
 
         database_parts = host_part.split("/", 1)
         host_and_port = database_parts[0]
         database = database_parts[1] if len(database_parts) > 1 else None
 
         if ":" in host_and_port:
-            hostname, port_str = host_and_port.split(":")
+            hostname, port_str = host_and_port.rsplit(":", 1)
             port = int(port_str)
         else:
             hostname = host_and_port
