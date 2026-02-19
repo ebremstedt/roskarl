@@ -23,5 +23,5 @@ __all__ = [
     "env_var_dsn",
     "env_var_rfc3339_datetime",
     "env_var_iso8601_datetime",
-    DSN,
+    "DSN",
 ]
