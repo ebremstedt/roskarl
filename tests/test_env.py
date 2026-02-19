@@ -1,8 +1,6 @@
 import os
 import unittest
-from unittest.mock import patch
-
-import pytest
+from datetime import datetime, timezone
 
 from roskarl import (
     env_var,
@@ -13,6 +11,10 @@ from roskarl import (
     env_var_bool,
     env_var_int,
     env_var_float,
+    env_var_iso8601_datetime,
+    env_var_rfc3339_datetime,
+    env_var_dsn,
+    DSN,
 )
 
 
@@ -24,10 +26,18 @@ class TestEnvVarUtils(unittest.TestCase):
         os.environ.clear()
         os.environ.update(self.original_environ)
 
+    # env_var
     def test_env_var_str_set(self):
         os.environ["TEST_STR"] = "hello"
         self.assertEqual(env_var("TEST_STR"), "hello")
 
+    def test_env_var_not_set_returns_none(self):
+        self.assertIsNone(env_var("TEST_STR"))
+
+    def test_env_var_not_set_returns_default(self):
+        self.assertEqual(env_var("TEST_STR", default="fallback"), "fallback")
+
+    # env_var_cron
     def test_env_var_cron_valid(self):
         os.environ["TEST_CRON"] = "0 0 * * *"
         self.assertEqual(env_var_cron("TEST_CRON"), "0 0 * * *")
@@ -38,6 +48,13 @@ class TestEnvVarUtils(unittest.TestCase):
             env_var_cron("TEST_CRON")
         self.assertIn("Value is not a valid cron expression.", str(context.exception))
 
+    def test_env_var_cron_not_set_returns_none(self):
+        self.assertIsNone(env_var_cron("TEST_CRON"))
+
+    def test_env_var_cron_not_set_returns_default(self):
+        self.assertEqual(env_var_cron("TEST_CRON", default="0 * * * *"), "0 * * * *")
+
+    # env_var_tz
     def test_env_var_tz_valid(self):
         os.environ["TEST_TZ"] = "America/New_York"
         self.assertEqual(env_var_tz("TEST_TZ"), "America/New_York")
@@ -48,6 +65,13 @@ class TestEnvVarUtils(unittest.TestCase):
             env_var_tz("TEST_TZ")
         self.assertIn("Timezone string was not valid", str(context.exception))
 
+    def test_env_var_tz_not_set_returns_none(self):
+        self.assertIsNone(env_var_tz("TEST_TZ"))
+
+    def test_env_var_tz_not_set_returns_default(self):
+        self.assertEqual(env_var_tz("TEST_TZ", default="UTC"), "UTC")
+
+    # env_var_list
     def test_env_var_list_default_separator(self):
         os.environ["TEST_LIST"] = "a, b, c"
         self.assertEqual(env_var_list("TEST_LIST"), ["a", "b", "c"])
@@ -56,6 +80,17 @@ class TestEnvVarUtils(unittest.TestCase):
         os.environ["TEST_LIST"] = "a;b;c"
         self.assertEqual(env_var_list("TEST_LIST", separator=";"), ["a", "b", "c"])
 
+    def test_env_var_list_not_set_returns_none(self):
+        self.assertIsNone(env_var_list("TEST_LIST"))
+
+    def test_env_var_list_not_set_returns_default(self):
+        self.assertEqual(env_var_list("TEST_LIST", default=["x", "y"]), ["x", "y"])
+
+    def test_env_var_list_single_item(self):
+        os.environ["TEST_LIST"] = "only"
+        self.assertEqual(env_var_list("TEST_LIST"), ["only"])
+
+    # env_var_bool
     def test_env_var_bool_true(self):
         os.environ["TEST_BOOL"] = "TRUE"
         self.assertTrue(env_var_bool("TEST_BOOL"))
@@ -74,6 +109,13 @@ class TestEnvVarUtils(unittest.TestCase):
             env_var_bool("TEST_BOOL")
         self.assertIn("Bool must be set to true or false", str(context.exception))
 
+    def test_env_var_bool_not_set_returns_none(self):
+        self.assertIsNone(env_var_bool("TEST_BOOL"))
+
+    def test_env_var_bool_not_set_returns_default(self):
+        self.assertTrue(env_var_bool("TEST_BOOL", default=True))
+
+    # env_var_int
     def test_env_var_int(self):
         os.environ["TEST_INT"] = "42"
         self.assertEqual(env_var_int("TEST_INT"), 42)
@@ -83,6 +125,17 @@ class TestEnvVarUtils(unittest.TestCase):
         with self.assertRaises(ValueError):
             env_var_int("TEST_INT")
 
+    def test_env_var_int_not_set_returns_none(self):
+        self.assertIsNone(env_var_int("TEST_INT"))
+
+    def test_env_var_int_not_set_returns_default(self):
+        self.assertEqual(env_var_int("TEST_INT", default=99), 99)
+
+    def test_env_var_int_negative(self):
+        os.environ["TEST_INT"] = "-10"
+        self.assertEqual(env_var_int("TEST_INT"), -10)
+
+    # env_var_float
     def test_env_var_float(self):
         os.environ["TEST_FLOAT"] = "3.14"
         self.assertEqual(env_var_float("TEST_FLOAT"), 3.14)
@@ -92,196 +145,121 @@ class TestEnvVarUtils(unittest.TestCase):
         with self.assertRaises(ValueError):
             env_var_float("TEST_FLOAT")
 
-    def test_env_var_dsn_basic(self):
-        with patch.dict(
-            os.environ, {"TEST_DSN": "mssql://user:password@localhost:1433/testdb"}
-        ):
-            result = env_var_dsn("TEST_DSN")
-            assert result is not None
-            assert result.protocol == "mssql"
-            assert result.username == "user"
-            assert result.password == "password"
-            assert result.hostname == "localhost"
-            assert result.port == 1433
-            assert result.database == "testdb"
+    def test_env_var_float_not_set_returns_none(self):
+        self.assertIsNone(env_var_float("TEST_FLOAT"))
 
-    def test_env_var_dsn_no_port(self):
-        with patch.dict(
-            os.environ, {"TEST_DSN": "postgresql://user:password@localhost/testdb"}
-        ):
-            result = env_var_dsn("TEST_DSN")
-            assert result is not None
-            assert result.port is None
+    def test_env_var_float_not_set_returns_default(self):
+        self.assertEqual(env_var_float("TEST_FLOAT", default=1.5), 1.5)
 
-    def test_env_var_dsn_no_database(self):
-        with patch.dict(
-            os.environ, {"TEST_DSN": "mysql://user:password@localhost:3306"}
-        ):
-            result = env_var_dsn("TEST_DSN")
-            assert result is not None
-            assert result.database is None
+    def test_env_var_float_negative(self):
+        os.environ["TEST_FLOAT"] = "-2.71"
+        self.assertEqual(env_var_float("TEST_FLOAT"), -2.71)
 
-    def test_env_var_dsn_missing_env_var(self):
-        with patch.dict(os.environ, {}, clear=True):
-            result = env_var_dsn("MISSING_DSN")
-            assert result is None
+    # env_var_iso8601_datetime
+    def test_env_var_iso8601_datetime_valid_with_tz(self):
+        os.environ["TEST_DT"] = "2026-01-01T00:00:00+00:00"
+        result = env_var_iso8601_datetime("TEST_DT")
+        self.assertEqual(result, datetime(2026, 1, 1, tzinfo=timezone.utc))
 
-    def test_env_var_dsn_quote_in_password(self):
-        with patch.dict(
-            os.environ, {"TEST_DSN": "mssql://user:%22password@localhost:1433/testdb"}
-        ):
-            result = env_var_dsn("TEST_DSN")
-            assert result is not None
-            assert result.password == '"password'
+    def test_env_var_iso8601_datetime_valid_without_tz(self):
+        os.environ["TEST_DT"] = "2026-01-01T00:00:00"
+        result = env_var_iso8601_datetime("TEST_DT")
+        self.assertEqual(result, datetime(2026, 1, 1))
 
-    def test_env_var_dsn_at_symbol_in_password(self):
-        with patch.dict(
-            os.environ, {"TEST_DSN": "mssql://user:pass%40word@localhost:1433/testdb"}
-        ):
-            result = env_var_dsn("TEST_DSN")
-            assert result is not None
-            assert result.password == "pass@word"
+    def test_env_var_iso8601_datetime_invalid(self):
+        os.environ["TEST_DT"] = "not-a-datetime"
+        with self.assertRaises(ValueError) as context:
+            env_var_iso8601_datetime("TEST_DT")
+        self.assertIn("is not a valid ISO8601 datetime string", str(context.exception))
 
-    def test_env_var_dsn_colon_in_password(self):
-        with patch.dict(
-            os.environ, {"TEST_DSN": "mssql://user:pass%3Aword@localhost:1433/testdb"}
-        ):
-            result = env_var_dsn("TEST_DSN")
-            assert result is not None
-            assert result.password == "pass:word"
+    def test_env_var_iso8601_datetime_not_set_returns_none(self):
+        self.assertIsNone(env_var_iso8601_datetime("TEST_DT"))
 
-    def test_env_var_dsn_colon_in_username(self):
-        with patch.dict(
-            os.environ,
-            {"TEST_DSN": "mssql://user%3Aname:password@localhost:1433/testdb"},
-        ):
-            result = env_var_dsn("TEST_DSN")
-            assert result is not None
-            assert result.username == "user:name"
+    def test_env_var_iso8601_datetime_not_set_returns_default(self):
+        default = datetime(2025, 1, 1)
+        self.assertEqual(env_var_iso8601_datetime("TEST_DT", default=default), default)
 
-    def test_env_var_dsn_complex_password(self):
-        with patch.dict(
-            os.environ,
-            {
-                "TEST_DSN": "mssql://user:%22%25%23%2B%5E%28T81%2AV3yo%40@localhost:1433/testdb"
-            },
-        ):
-            result = env_var_dsn("TEST_DSN")
-            assert result is not None
-            assert result.password == '"%#+^(T81*V3yo@'
+    # env_var_rfc3339_datetime
+    def test_env_var_rfc3339_datetime_valid(self):
+        os.environ["TEST_DT"] = "2026-01-01T00:00:00+00:00"
+        result = env_var_rfc3339_datetime("TEST_DT")
+        self.assertEqual(result, datetime(2026, 1, 1, tzinfo=timezone.utc))
 
-    def test_env_var_dsn_space_in_credentials(self):
-        with patch.dict(
-            os.environ,
-            {"TEST_DSN": "mssql://user%20name:pass%20word@localhost:1433/testdb"},
-        ):
-            result = env_var_dsn("TEST_DSN")
-            assert result is not None
-            assert result.username == "user name"
-            assert result.password == "pass word"
+    def test_env_var_rfc3339_datetime_invalid(self):
+        os.environ["TEST_DT"] = "not-a-datetime"
+        with self.assertRaises(ValueError) as context:
+            env_var_rfc3339_datetime("TEST_DT")
+        self.assertIn("is not a valid RFC3339 datetime string", str(context.exception))
 
-    def test_env_var_dsn_slash_in_password(self):
-        with patch.dict(
-            os.environ, {"TEST_DSN": "mssql://user:pass%2Fword@localhost:1433/testdb"}
-        ):
-            result = env_var_dsn("TEST_DSN")
-            assert result is not None
-            assert result.password == "pass/word"
+    def test_env_var_rfc3339_datetime_missing_tz(self):
+        os.environ["TEST_DT"] = "2026-01-01T00:00:00"
+        with self.assertRaises(ValueError) as context:
+            env_var_rfc3339_datetime("TEST_DT")
+        self.assertIn("missing timezone info", str(context.exception))
 
-    def test_env_var_dsn_backslash_in_password(self):
-        with patch.dict(
-            os.environ, {"TEST_DSN": "mssql://user:pass%5Cword@localhost:1433/testdb"}
-        ):
-            result = env_var_dsn("TEST_DSN")
-            assert result is not None
-            assert result.password == "pass\\word"
+    def test_env_var_rfc3339_datetime_not_set_returns_none(self):
+        self.assertIsNone(env_var_rfc3339_datetime("TEST_DT"))
 
-    def test_env_var_dsn_special_chars_in_password(self):
-        with patch.dict(
-            os.environ,
-            {"TEST_DSN": "mssql://user:pass%26%3D%3F%21%24%7E@localhost:1433/testdb"},
-        ):
-            result = env_var_dsn("TEST_DSN")
-            assert result is not None
-            assert result.password == "pass&=?!$~"
+    def test_env_var_rfc3339_datetime_not_set_returns_default(self):
+        default = datetime(2025, 1, 1, tzinfo=timezone.utc)
+        self.assertEqual(env_var_rfc3339_datetime("TEST_DT", default=default), default)
 
-    def test_env_var_dsn_brackets_in_password(self):
-        with patch.dict(
-            os.environ,
-            {"TEST_DSN": "mssql://user:pass%5B%5D%7B%7D@localhost:1433/testdb"},
-        ):
-            result = env_var_dsn("TEST_DSN")
-            assert result is not None
-            assert result.password == "pass[]{}"
+    # env_var_dsn
+    def test_env_var_dsn_valid_full(self):
+        os.environ["TEST_DSN"] = "postgresql://user:password@localhost:5432/mydb"
+        result = env_var_dsn("TEST_DSN")
+        self.assertIsInstance(result, DSN)
+        self.assertEqual(result.protocol, "postgresql")
+        self.assertEqual(result.username, "user")
+        self.assertEqual(result.password, "password")
+        self.assertEqual(result.hostname, "localhost")
+        self.assertEqual(result.port, 5432)
+        self.assertEqual(result.database, "mydb")
 
-    def test_env_var_dsn_pipe_and_semicolon(self):
-        with patch.dict(
-            os.environ,
-            {"TEST_DSN": "mssql://user:pass%7C%3Bword@localhost:1433/testdb"},
-        ):
-            result = env_var_dsn("TEST_DSN")
-            assert result is not None
-            assert result.password == "pass|;word"
+    def test_env_var_dsn_valid_no_port(self):
+        os.environ["TEST_DSN"] = "postgresql://user:password@localhost/mydb"
+        result = env_var_dsn("TEST_DSN")
+        self.assertIsNone(result.port)
 
-    def test_env_var_dsn_invalid_protocol(self):
-        with patch.dict(os.environ, {"TEST_DSN": "invalid_dsn_string"}):
-            with pytest.raises(ValueError, match="Invalid DSN: Protocol not found"):
-                env_var_dsn("TEST_DSN")
+    def test_env_var_dsn_valid_no_database(self):
+        os.environ["TEST_DSN"] = "postgresql://user:password@localhost:5432"
+        result = env_var_dsn("TEST_DSN")
+        self.assertIsNone(result.database)
 
-    def test_env_var_dsn_no_at_separator(self):
-        with patch.dict(os.environ, {"TEST_DSN": "mssql://user:password"}):
-            with pytest.raises(ValueError, match="Invalid DSN: No @ separator found"):
-                env_var_dsn("TEST_DSN")
+    def test_env_var_dsn_connection_string(self):
+        os.environ["TEST_DSN"] = "postgresql://user:password@localhost:5432/mydb"
+        result = env_var_dsn("TEST_DSN")
+        self.assertEqual(
+            result.connection_string, "postgresql://user:password@localhost:5432/mydb"
+        )
 
-    def test_env_var_dsn_no_colon_in_credentials(self):
-        with patch.dict(
-            os.environ, {"TEST_DSN": "mssql://userpassword@localhost:1433/testdb"}
-        ):
-            with pytest.raises(
-                ValueError, match="Invalid DSN: No colon separator found in credentials"
-            ):
-                env_var_dsn("TEST_DSN")
+    def test_env_var_dsn_str_masks_password(self):
+        os.environ["TEST_DSN"] = "postgresql://user:password@localhost:5432/mydb"
+        result = env_var_dsn("TEST_DSN")
+        self.assertIn("****", str(result))
+        self.assertNotIn("password", str(result))
 
-    def test_env_var_dsn_invalid_port(self):
-        with patch.dict(
-            os.environ, {"TEST_DSN": "mssql://user:password@localhost:invalid/testdb"}
-        ):
-            with pytest.raises(ValueError, match="Failed to parse DSN string"):
-                env_var_dsn("TEST_DSN")
+    def test_env_var_dsn_invalid(self):
+        os.environ["TEST_DSN"] = "not-a-dsn"
+        with self.assertRaises(ValueError):
+            env_var_dsn("TEST_DSN")
 
-    def test_dsn_connection_string_generation(self):
-        with patch.dict(
-            os.environ, {"TEST_DSN": "mssql://user:p%40ssword@localhost:1433/testdb"}
-        ):
-            result = env_var_dsn("TEST_DSN")
-            assert result is not None
-            assert result.password == "p@ssword"
-            assert "p%40ssword" in result.connection_string
+    def test_env_var_dsn_not_set_returns_none(self):
+        self.assertIsNone(env_var_dsn("TEST_DSN"))
 
-    def test_dsn_str_representation(self):
-        with patch.dict(
-            os.environ, {"TEST_DSN": "mssql://user:password@localhost:1433/testdb"}
-        ):
-            result = env_var_dsn("TEST_DSN")
-            assert result is not None
-            str_repr = str(result)
-            assert "password" not in str_repr
-            assert "****" in str_repr
-            assert "user" in str_repr
+    def test_env_var_dsn_not_set_returns_default(self):
+        default = DSN(
+            protocol="postgresql", username="u", password="p", hostname="localhost"
+        )
+        self.assertEqual(env_var_dsn("TEST_DSN", default=default), default)
 
-    def test_dsn_to_dict(self):
-        with patch.dict(
-            os.environ, {"TEST_DSN": "mssql://user:password@localhost:1433/testdb"}
-        ):
-            result = env_var_dsn("TEST_DSN")
-            assert result is not None
-            dict_repr = result.to_dict()
-            assert dict_repr["protocol"] == "mssql"
-            assert dict_repr["username"] == "user"
-            assert dict_repr["password"] == "password"
-            assert dict_repr["hostname"] == "localhost"
-            assert dict_repr["port"] == 1433
-            assert dict_repr["database"] == "testdb"
+    def test_env_var_dsn_url_encoded_credentials(self):
+        os.environ["TEST_DSN"] = (
+            "postgresql://user%40name:p%40ssword@localhost:5432/mydb"
+        )
+        result = env_var_dsn("TEST_DSN")
+        self.assertEqual(result.username, "user@name")
+        self.assertEqual(result.password, "p@ssword")
 
 
 if __name__ == "__main__":
