@@ -99,7 +99,7 @@ def env_var_float(name: str, default: Optional[float] = None) -> Optional[float]
     return float(value)
 
 
-def env_var_rfc3339_datetime(
+def env_var_iso8601_datetime(
     name: str, default: Optional[datetime] = None
 ) -> Optional[datetime]:
     value = os.environ.get(name)
@@ -112,9 +112,33 @@ def env_var_rfc3339_datetime(
         return datetime.fromisoformat(value)
     except ValueError:
         raise ValueError(
-            f"'{name}' is not a valid RFC3339 datetime string: '{value}'. "
-            "Expected format: 2026-01-01T00:00:00Z or 2026-01-01T00:00:00+00:00"
+            f"'{name}' is not a valid ISO8601 datetime string: '{value}'. "
+            "Expected format: 2026-01-01T00:00:00 or 2026-01-01T00:00:00+00:00"
         )
+
+
+def env_var_rfc3339_datetime(
+    name: str, default: Optional[datetime] = None
+) -> Optional[datetime]:
+    value = os.environ.get(name)
+    if not value:
+        print_if_not_set(name=name)
+        if default is not None:
+            return default
+        return None
+    try:
+        dt = datetime.fromisoformat(value)
+    except ValueError:
+        raise ValueError(
+            f"'{name}' is not a valid RFC3339 datetime string: '{value}'. "
+            "Expected format: 2026-01-01T00:00:00+00:00"
+        )
+    if dt.tzinfo is None:
+        raise ValueError(
+            f"'{name}' is missing timezone info, RFC3339 requires it: '{value}'. "
+            "Expected format: 2026-01-01T00:00:00+00:00"
+        )
+    return dt
 
 
 @dataclass

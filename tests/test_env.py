@@ -10,6 +10,7 @@ from roskarl import (
     env_var_bool,
     env_var_int,
     env_var_float,
+    env_var_iso8601_datetime,
     env_var_rfc3339_datetime,
     env_var_dsn,
     DSN,
@@ -153,6 +154,30 @@ class TestEnvVarUtils(unittest.TestCase):
         os.environ["TEST_FLOAT"] = "-2.71"
         self.assertEqual(env_var_float("TEST_FLOAT"), -2.71)
 
+    # env_var_iso8601_datetime
+    def test_env_var_iso8601_datetime_valid_with_tz(self):
+        os.environ["TEST_DT"] = "2026-01-01T00:00:00+00:00"
+        result = env_var_iso8601_datetime("TEST_DT")
+        self.assertEqual(result, datetime(2026, 1, 1, tzinfo=timezone.utc))
+
+    def test_env_var_iso8601_datetime_valid_without_tz(self):
+        os.environ["TEST_DT"] = "2026-01-01T00:00:00"
+        result = env_var_iso8601_datetime("TEST_DT")
+        self.assertEqual(result, datetime(2026, 1, 1))
+
+    def test_env_var_iso8601_datetime_invalid(self):
+        os.environ["TEST_DT"] = "not-a-datetime"
+        with self.assertRaises(ValueError) as context:
+            env_var_iso8601_datetime("TEST_DT")
+        self.assertIn("is not a valid ISO8601 datetime string", str(context.exception))
+
+    def test_env_var_iso8601_datetime_not_set_returns_none(self):
+        self.assertIsNone(env_var_iso8601_datetime("TEST_DT"))
+
+    def test_env_var_iso8601_datetime_not_set_returns_default(self):
+        default = datetime(2025, 1, 1)
+        self.assertEqual(env_var_iso8601_datetime("TEST_DT", default=default), default)
+
     # env_var_rfc3339_datetime
     def test_env_var_rfc3339_datetime_valid(self):
         os.environ["TEST_DT"] = "2026-01-01T00:00:00+00:00"
@@ -164,6 +189,12 @@ class TestEnvVarUtils(unittest.TestCase):
         with self.assertRaises(ValueError) as context:
             env_var_rfc3339_datetime("TEST_DT")
         self.assertIn("is not a valid RFC3339 datetime string", str(context.exception))
+
+    def test_env_var_rfc3339_datetime_missing_tz(self):
+        os.environ["TEST_DT"] = "2026-01-01T00:00:00"
+        with self.assertRaises(ValueError) as context:
+            env_var_rfc3339_datetime("TEST_DT")
+        self.assertIn("missing timezone info", str(context.exception))
 
     def test_env_var_rfc3339_datetime_not_set_returns_none(self):
         self.assertIsNone(env_var_rfc3339_datetime("TEST_DT"))
