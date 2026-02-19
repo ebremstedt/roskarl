@@ -11,6 +11,13 @@ from roskarl.env import (
     env_var_iso8601_datetime,
     DSN,
 )
+from roskarl.marshal import (
+    CronConfig,
+    BackfillConfig,
+    EnvConfig,
+    load_env_config,
+    with_env_config,
+)
 
 __all__ = [
     "env_var_bool",
@@ -24,4 +31,9 @@ __all__ = [
     "env_var_rfc3339_datetime",
     "env_var_iso8601_datetime",
     "DSN",
+    "CronConfig",
+    "BackfillConfig",
+    "EnvConfig",
+    "load_env_config",
+    "with_env_config",
 ]
