@@ -13,7 +13,7 @@ pip install roskarl
 
 ## Example usage
 ```python
-from roskarl.env import (
+from roskarl import (
     env_var,
     env_var_bool,
     env_var_cron,
@@ -96,7 +96,7 @@ returns **`datetime`** if value is a valid [RFC3339](https://www.rfc-editor.org/
 
 ### DSN
 
-Note: if you use special characters in the password, these must be URL-encoded
+> **Note:** Special characters in passwords must be URL-encoded.
 
 ```python
 from urllib.parse import quote
@@ -108,9 +108,18 @@ print(encoded)  # My%24ecret%21Pass%402024 <--- use this
 ```python
 value = env_var_dsn(name="DSN_VAR")
 ```
-returns **`DSN`** object if value is a valid DSN string
-
-needs to be formatted like this:
+returns **`DSN`** object if value is a valid DSN string, formatted as:
 ```
 postgresql://username:password@hostname:5432/database_name
 ```
+
+The `DSN` object exposes the following attributes:
+
+| Attribute  | Type  | Example              |
+|------------|-------|----------------------|
+| `scheme`   | `str` | `postgresql`         |
+| `host`     | `str` | `hostname`           |
+| `port`     | `int` | `5432`               |
+| `username` | `str` | `username`           |
+| `password` | `str` | `password`           |
+| `database` | `str` | `database_name`      |
