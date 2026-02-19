@@ -166,24 +166,15 @@ Raises `ValueError` if both `CRON_ENABLED` and `BACKFILL_ENABLED` are `true`.
 A decorator that calls `load_env_config()` and injects the result as the first argument. Useful for pipeline entrypoints.
 
 ```python
-from roskarl.decorators import with_env_config
-from roskarl.marshal import EnvConfig
+from roskarl.marshal import with_env_config, EnvConfig
 
 @with_env_config
 def run(env: EnvConfig) -> None:
-    if env.backfill.enabled:
-        run_backfill(
-            model=env.model_name,
-            since=env.backfill.since,
-            until=env.backfill.until,
-            batch_size=env.backfill.batch_size,
-        )
-    else:
-        run_incremental(
-            model=env.model_name,
-            since=env.cron.since,
-            until=env.cron.until,
-        )
+    run_pipeline(
+        model=env.model_name,
+        since=env.backfill.since,
+        until=env.backfill.until,
+    )
 
 run()
 ```
