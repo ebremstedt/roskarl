@@ -7,7 +7,8 @@ from roskarl.env import (
     env_var,
     env_var_tz,
     env_var_dsn,
-    DSN
+    env_var_rfc3339_datetime,
+    DSN,
 )
 
 __all__ = [
@@ -19,5 +20,6 @@ __all__ = [
     "env_var",
     "env_var_tz",
     "env_var_dsn",
-    DSN
+    "env_var_rfc3339_datetime",
+    DSN,
 ]
