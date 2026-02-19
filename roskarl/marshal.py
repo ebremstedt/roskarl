@@ -8,6 +8,8 @@ from roskarl import (
     env_var_iso8601_datetime,
 )
 from croniter import croniter
+from functools import wraps
+from typing import Callable
 
 
 @dataclass
@@ -74,3 +76,12 @@ def load_env_config() -> EnvConfig:
             else None,
         ),
     )
+
+
+def with_env_config(func: Callable[[EnvConfig], None]) -> Callable[[], None]:
+    @wraps(func)
+    def wrapper() -> None:
+        env = load_env_config()
+        func(env)
+
+    return wrapper

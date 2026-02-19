@@ -1,7 +1,7 @@
 import pytest
 from datetime import datetime
 from unittest.mock import patch
-from roskarl.marshal import load_env_config
+from roskarl.marshal import load_env_config, with_env_config, EnvConfig
 
 
 def test_default_all_disabled():
@@ -103,3 +103,62 @@ def test_daily_cron_interval_is_24h():
         env = load_env_config()
         delta = env.cron.until - env.cron.since
         assert delta.total_seconds() == 86400
+
+
+def test_decorator_injects_env_config():
+    received: list[EnvConfig] = []
+
+    @with_env_config
+    def run(env: EnvConfig) -> None:
+        received.append(env)
+
+    with patch.dict("os.environ", {"MODEL_NAME": "my-model"}, clear=True):
+        run()
+
+    assert len(received) == 1
+    assert isinstance(received[0], EnvConfig)
+    assert received[0].model_name == "my-model"
+
+
+def test_decorator_preserves_function_name():
+    @with_env_config
+    def run(env: EnvConfig) -> None:
+        pass
+
+    assert run.__name__ == "run"
+
+
+def test_decorator_raises_on_both_enabled():
+    @with_env_config
+    def run(env: EnvConfig) -> None:
+        pass
+
+    env_vars = {
+        "CRON_ENABLED": "true",
+        "CRON_EXPRESSION": "0 * * * *",
+        "BACKFILL_ENABLED": "true",
+    }
+    with patch.dict("os.environ", env_vars, clear=True):
+        with pytest.raises(
+            ValueError, match="CRON_ENABLED and BACKFILL_ENABLED cannot both be true"
+        ):
+            run()
+
+
+def test_decorator_injects_cron_config():
+    received: list[EnvConfig] = []
+
+    @with_env_config
+    def run(env: EnvConfig) -> None:
+        received.append(env)
+
+    env_vars = {
+        "CRON_ENABLED": "true",
+        "CRON_EXPRESSION": "0 * * * *",
+    }
+    with patch.dict("os.environ", env_vars, clear=True):
+        run()
+
+    assert received[0].cron.enabled is True
+    assert isinstance(received[0].cron.since, datetime)
+    assert isinstance(received[0].cron.until, datetime)
