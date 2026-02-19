@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from roskarl import (
     env_var,
     env_var_cron,
+    env_var_dsn,
     env_var_tz,
     env_var_list,
     env_var_bool,
