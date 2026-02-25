@@ -1,11 +1,11 @@
 from dataclasses import dataclass
 from datetime import datetime
 from roskarl import (
-    env_var,
     env_var_bool,
     env_var_cron,
     env_var_int,
     env_var_iso8601_datetime,
+    env_var_list,
 )
 from croniter import croniter
 from functools import wraps
@@ -30,7 +30,8 @@ class BackfillConfig:
 
 @dataclass
 class EnvConfig:
-    model_name: str | None
+    models: list[str] | None
+    tags: list[str] | None
     cron: CronConfig
     backfill: BackfillConfig
 
@@ -56,7 +57,8 @@ def load_env_config() -> EnvConfig:
     )
 
     return EnvConfig(
-        model_name=env_var(name="MODEL_NAME"),
+        models=env_var_list(name="MODELS"),
+        tags=env_var_list(name="TAGS"),
         cron=CronConfig(
             enabled=cron_enabled,
             expression=cron_expression,

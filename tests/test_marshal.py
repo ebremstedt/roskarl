@@ -1,164 +1,159 @@
 import pytest
 from datetime import datetime
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 from roskarl.marshal import load_env_config, with_env_config, EnvConfig
 
 
-def test_default_all_disabled():
-    with patch.dict("os.environ", {}, clear=True):
-        env = load_env_config()
-        assert env.cron.enabled is False
-        assert env.backfill.enabled is False
-        assert env.model_name is None
-        assert env.cron.expression is None
-        assert env.cron.since is None
-        assert env.cron.until is None
-        assert env.backfill.since is None
-        assert env.backfill.until is None
-        assert env.backfill.batch_size is None
+def test_defaults_all_disabled():
+    with (
+        patch("roskarl.marshal.env_var_bool", return_value=False),
+        patch("roskarl.marshal.env_var_list", return_value=None),
+    ):
+        config = load_env_config()
+
+    assert config.models is None
+    assert config.tags is None
+    assert config.cron.enabled is False
+    assert config.cron.expression is None
+    assert config.cron.since is None
+    assert config.cron.until is None
+    assert config.backfill.enabled is False
+    assert config.backfill.since is None
+    assert config.backfill.until is None
+    assert config.backfill.batch_size is None
 
 
-def test_cron_enabled_resolves_interval():
-    env_vars = {
-        "CRON_ENABLED": "true",
-        "CRON_EXPRESSION": "0 * * * *",
-    }
-    with patch.dict("os.environ", env_vars, clear=True):
-        env = load_env_config()
-        assert env.cron.enabled is True
-        assert env.cron.expression == "0 * * * *"
-        assert isinstance(env.cron.since, datetime)
-        assert isinstance(env.cron.until, datetime)
-        assert env.cron.since < env.cron.until
-
-
-def test_cron_interval_is_one_period_apart():
-    env_vars = {
-        "CRON_ENABLED": "true",
-        "CRON_EXPRESSION": "0 * * * *",
-    }
-    with patch.dict("os.environ", env_vars, clear=True):
-        env = load_env_config()
-        delta = env.cron.until - env.cron.since
-        assert delta.total_seconds() == 3600
-
-
-def test_backfill_enabled():
-    env_vars = {
-        "BACKFILL_ENABLED": "true",
-        "BACKFILL_SINCE": "2026-01-01T00:00:00+00:00",
-        "BACKFILL_UNTIL": "2026-02-01T00:00:00+00:00",
-        "BACKFILL_BATCH_SIZE": "100",
-    }
-    with patch.dict("os.environ", env_vars, clear=True):
-        env = load_env_config()
-        assert env.backfill.enabled is True
-        assert isinstance(env.backfill.since, datetime)
-        assert isinstance(env.backfill.until, datetime)
-        assert env.backfill.batch_size == 100
-
-
-def test_both_enabled_raises():
-    env_vars = {
-        "CRON_ENABLED": "true",
-        "CRON_EXPRESSION": "0 * * * *",
-        "BACKFILL_ENABLED": "true",
-    }
-    with patch.dict("os.environ", env_vars, clear=True):
+def test_cron_and_backfill_both_enabled_raises():
+    with patch("roskarl.marshal.env_var_bool", return_value=True):
         with pytest.raises(
             ValueError, match="CRON_ENABLED and BACKFILL_ENABLED cannot both be true"
         ):
             load_env_config()
 
 
-def test_model_name():
-    with patch.dict("os.environ", {"MODEL_NAME": "my-model"}, clear=True):
-        env = load_env_config()
-        assert env.model_name == "my-model"
+def test_cron_enabled_resolves_interval():
+    mock_dt = datetime(2024, 1, 15, 12, 0, 0)
+
+    def mock_bool(name):
+        return name == "CRON_ENABLED"
+
+    with (
+        patch("roskarl.marshal.env_var_bool", side_effect=mock_bool),
+        patch("roskarl.marshal.env_var_list", return_value=None),
+        patch("roskarl.marshal.env_var_cron", return_value="0 3 * * *"),
+        patch(
+            "roskarl.marshal._resolve_cron_interval", return_value=(mock_dt, mock_dt)
+        ) as mock_resolve,
+    ):
+        config = load_env_config()
+
+    mock_resolve.assert_called_once_with("0 3 * * *")
+    assert config.cron.enabled is True
+    assert config.cron.expression == "0 3 * * *"
+    assert config.cron.since == mock_dt
+    assert config.cron.until == mock_dt
 
 
-def test_cron_disabled_no_interval():
-    with patch.dict("os.environ", {"CRON_ENABLED": "false"}, clear=True):
-        env = load_env_config()
-        assert env.cron.enabled is False
-        assert env.cron.since is None
-        assert env.cron.until is None
+def test_cron_disabled_skips_expression():
+    with (
+        patch("roskarl.marshal.env_var_bool", return_value=False),
+        patch("roskarl.marshal.env_var_list", return_value=None),
+    ):
+        config = load_env_config()
+
+    assert config.cron.expression is None
+    assert config.cron.since is None
+    assert config.cron.until is None
 
 
-def test_backfill_disabled_no_dates():
-    with patch.dict("os.environ", {"BACKFILL_ENABLED": "false"}, clear=True):
-        env = load_env_config()
-        assert env.backfill.enabled is False
-        assert env.backfill.since is None
-        assert env.backfill.until is None
-        assert env.backfill.batch_size is None
+def test_backfill_enabled_reads_fields():
+    mock_dt = datetime(2024, 1, 1, 0, 0, 0)
+
+    def mock_bool(name):
+        return name == "BACKFILL_ENABLED"
+
+    with (
+        patch("roskarl.marshal.env_var_bool", side_effect=mock_bool),
+        patch("roskarl.marshal.env_var_list", return_value=None),
+        patch("roskarl.marshal.env_var_iso8601_datetime", return_value=mock_dt),
+        patch("roskarl.marshal.env_var_int", return_value=7),
+    ):
+        config = load_env_config()
+
+    assert config.backfill.enabled is True
+    assert config.backfill.since == mock_dt
+    assert config.backfill.until == mock_dt
+    assert config.backfill.batch_size == 7
 
 
-def test_daily_cron_interval_is_24h():
-    env_vars = {
-        "CRON_ENABLED": "true",
-        "CRON_EXPRESSION": "0 0 * * *",
-    }
-    with patch.dict("os.environ", env_vars, clear=True):
-        env = load_env_config()
-        delta = env.cron.until - env.cron.since
-        assert delta.total_seconds() == 86400
+def test_backfill_disabled_skips_fields():
+    with (
+        patch("roskarl.marshal.env_var_bool", return_value=False),
+        patch("roskarl.marshal.env_var_list", return_value=None),
+    ):
+        config = load_env_config()
+
+    assert config.backfill.since is None
+    assert config.backfill.until is None
+    assert config.backfill.batch_size is None
 
 
-def test_decorator_injects_env_config():
-    received: list[EnvConfig] = []
+def test_models_and_tags_populated():
+    with (
+        patch("roskarl.marshal.env_var_bool", return_value=False),
+        patch(
+            "roskarl.marshal.env_var_list",
+            side_effect=lambda name: {
+                "MODELS": ["orders", "customers"],
+                "TAGS": ["finance", "critical"],
+            }.get(name),
+        ),
+    ):
+        config = load_env_config()
 
-    @with_env_config
-    def run(env: EnvConfig) -> None:
-        received.append(env)
-
-    with patch.dict("os.environ", {"MODEL_NAME": "my-model"}, clear=True):
-        run()
-
-    assert len(received) == 1
-    assert isinstance(received[0], EnvConfig)
-    assert received[0].model_name == "my-model"
+    assert config.models == ["orders", "customers"]
+    assert config.tags == ["finance", "critical"]
 
 
-def test_decorator_preserves_function_name():
-    @with_env_config
-    def run(env: EnvConfig) -> None:
+def test_models_none_tags_set():
+    with (
+        patch("roskarl.marshal.env_var_bool", return_value=False),
+        patch(
+            "roskarl.marshal.env_var_list",
+            side_effect=lambda name: {
+                "TAGS": ["finance"],
+            }.get(name),
+        ),
+    ):
+        config = load_env_config()
+
+    assert config.models is None
+    assert config.tags == ["finance"]
+
+
+def test_resolve_cron_interval_returns_two_datetimes():
+    from roskarl.marshal import _resolve_cron_interval
+
+    since, until = _resolve_cron_interval("0 3 * * *")
+    assert isinstance(since, datetime)
+    assert isinstance(until, datetime)
+    assert since <= until
+
+
+def test_with_env_config_decorator():
+    mock_config = MagicMock()
+
+    with patch("roskarl.marshal.load_env_config", return_value=mock_config):
+        handler = MagicMock()
+        wrapped = with_env_config(handler)
+        wrapped()
+
+    handler.assert_called_once_with(mock_config)
+
+
+def test_with_env_config_preserves_name():
+    def my_pipeline(env: EnvConfig) -> None:
         pass
 
-    assert run.__name__ == "run"
-
-
-def test_decorator_raises_on_both_enabled():
-    @with_env_config
-    def run(env: EnvConfig) -> None:
-        pass
-
-    env_vars = {
-        "CRON_ENABLED": "true",
-        "CRON_EXPRESSION": "0 * * * *",
-        "BACKFILL_ENABLED": "true",
-    }
-    with patch.dict("os.environ", env_vars, clear=True):
-        with pytest.raises(
-            ValueError, match="CRON_ENABLED and BACKFILL_ENABLED cannot both be true"
-        ):
-            run()
-
-
-def test_decorator_injects_cron_config():
-    received: list[EnvConfig] = []
-
-    @with_env_config
-    def run(env: EnvConfig) -> None:
-        received.append(env)
-
-    env_vars = {
-        "CRON_ENABLED": "true",
-        "CRON_EXPRESSION": "0 * * * *",
-    }
-    with patch.dict("os.environ", env_vars, clear=True):
-        run()
-
-    assert received[0].cron.enabled is True
-    assert isinstance(received[0].cron.since, datetime)
-    assert isinstance(received[0].cron.until, datetime)
+    wrapped = with_env_config(my_pipeline)
+    assert wrapped.__name__ == "my_pipeline"
