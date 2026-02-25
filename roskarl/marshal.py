@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from roskarl import (
     env_var_bool,
@@ -34,6 +34,7 @@ class EnvConfig:
     tags: list[str] | None
     cron: CronConfig
     backfill: BackfillConfig
+    debug: bool = field(default=False)
 
 
 def _resolve_cron_interval(expression: str) -> tuple[datetime, datetime]:
@@ -77,6 +78,7 @@ def load_env_config() -> EnvConfig:
             if backfill_enabled
             else None,
         ),
+        debug=env_var_bool(name="DEBUG") or False,
     )
 
 
