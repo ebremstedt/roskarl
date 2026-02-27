@@ -18,6 +18,7 @@ Raises `ValueError` if both `CRON_ENABLED` and `BACKFILL_ENABLED` are `true`.
 |---|---|---|
 | `MODELS` | `list[str]` | Model names |
 | `TAGS` | `list[str]` | Filter tags |
+| `DEBUG` | `bool` | Debug run or not? |
 | `CRON_ENABLED` | `bool` | Enable cron mode |
 | `CRON_EXPRESSION` | `str` | Valid cron expression |
 | `BACKFILL_ENABLED` | `bool` | Enable backfill mode |
@@ -49,4 +50,16 @@ def run(env: EnvConfig) -> None:
     )
 
 run()
+```
+
+### `get_execute_functions`
+
+Loads `execute` functions from Python model files in a given folder, with optional filtering by model name or tag.
+
+Raises `ValueError` if both `models` and `tags` are provided simultaneously.
+```python
+from roskarl.marshal import get_execute_functions
+
+functions = get_execute_functions(folder="src/models", models=["orders", "customers"])
+functions = get_execute_functions(folder="src/models", tags=["finance"])
 ```

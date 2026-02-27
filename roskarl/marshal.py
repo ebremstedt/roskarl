@@ -1,5 +1,8 @@
 from dataclasses import dataclass, field
 from datetime import datetime
+import importlib
+from pathlib import Path
+import types
 from roskarl import (
     env_var_bool,
     env_var_cron,
@@ -89,3 +92,38 @@ def with_env_config(func: Callable[[EnvConfig], None]) -> Callable[[], None]:
         func(env)
 
     return wrapper
+
+
+def _module_matches(
+    module: types.ModuleType,
+    stem: str,
+    models: list[str] | None,
+    tags: list[str] | None,
+) -> bool:
+    if models is not None and stem not in models:
+        return False
+    if tags is not None:
+        module_tags: list[str] = getattr(module, "TAGS", [])
+        return any(tag in module_tags for tag in tags)
+    return True
+
+
+def get_execute_functions(
+    folder: str = "src/models",
+    models: list[str] | None = None,
+    tags: list[str] | None = None,
+) -> list[Callable]:
+    """Recommended way to match model names with their respective settings and execute functions"""
+    if models is not None and tags is not None:
+        raise ValueError("Cannot filter by both models and tags simultaneously.")
+
+    execute_functions = []
+    for file in Path(folder).glob("*.py"):
+        module_spec = importlib.util.spec_from_file_location(
+            name=file.stem, location=file
+        )
+        module = importlib.util.module_from_spec(spec=module_spec)
+        module_spec.loader.exec_module(module)
+        if _module_matches(module, file.stem, models, tags):
+            execute_functions.append(module.execute)
+    return execute_functions

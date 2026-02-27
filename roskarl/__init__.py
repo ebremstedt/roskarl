@@ -17,6 +17,7 @@ from roskarl.marshal import (
     EnvConfig,
     load_env_config,
     with_env_config,
+    get_execute_functions,
 )
 
 __all__ = [
@@ -36,4 +37,5 @@ __all__ = [
     "EnvConfig",
     "load_env_config",
     "with_env_config",
+    "get_execute_functions",
 ]

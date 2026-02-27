@@ -1,7 +1,12 @@
 import pytest
 from datetime import datetime
 from unittest.mock import patch, MagicMock
-from roskarl.marshal import load_env_config, with_env_config, EnvConfig
+from roskarl.marshal import (
+    load_env_config,
+    with_env_config,
+    EnvConfig,
+    get_execute_functions,
+)
 
 
 def test_defaults_all_disabled():
@@ -157,3 +162,58 @@ def test_with_env_config_preserves_name():
 
     wrapped = with_env_config(my_pipeline)
     assert wrapped.__name__ == "my_pipeline"
+
+
+def test_raises_when_both_models_and_tags_set():
+    with pytest.raises(ValueError):
+        get_execute_functions(models=["my_model"], tags=["finance"])
+
+
+def test_returns_empty_when_no_files(tmp_path):
+    result = get_execute_functions(folder=str(tmp_path))
+    assert result == []
+
+
+def test_loads_all_execute_functions(tmp_path):
+    for name in ["model_a", "model_b"]:
+        (tmp_path / f"{name}.py").write_text("def execute(): pass")
+
+    result = get_execute_functions(folder=str(tmp_path))
+    assert len(result) == 2
+
+
+def test_filters_by_models(tmp_path):
+    (tmp_path / "model_a.py").write_text("def execute(): pass")
+    (tmp_path / "model_b.py").write_text("def execute(): pass")
+
+    result = get_execute_functions(folder=str(tmp_path), models=["model_a"])
+    assert len(result) == 1
+
+
+def test_filters_by_tags(tmp_path):
+    (tmp_path / "tagged.py").write_text("TAGS = ['finance']\ndef execute(): pass")
+    (tmp_path / "untagged.py").write_text("def execute(): pass")
+
+    result = get_execute_functions(folder=str(tmp_path), tags=["finance"])
+    assert len(result) == 1
+
+
+def test_tag_filter_no_match(tmp_path):
+    (tmp_path / "model_a.py").write_text("TAGS = ['ops']\ndef execute(): pass")
+
+    result = get_execute_functions(folder=str(tmp_path), tags=["finance"])
+    assert result == []
+
+
+def test_models_filter_no_match(tmp_path):
+    (tmp_path / "model_a.py").write_text("def execute(): pass")
+
+    result = get_execute_functions(folder=str(tmp_path), models=["model_b"])
+    assert result == []
+
+
+def test_returns_callable_execute_functions(tmp_path):
+    (tmp_path / "model_a.py").write_text("def execute(): pass")
+
+    result = get_execute_functions(folder=str(tmp_path))
+    assert all(callable(f) for f in result)
