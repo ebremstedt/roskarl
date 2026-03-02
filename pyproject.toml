@@ -2,7 +2,7 @@
 name = "roskarl"
 version = "3.0.6"
 authors = [
-  { name="Erik Bremstedt", email="erik.bremstedt@gmail.com" },
+  { name="Erik Bremstedt", email="erik@bremstedtanalytics.se" },
 ]
 description = "Environment variable helpers"
 readme = "README.md"
