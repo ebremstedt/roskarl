@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 import importlib
 from pathlib import Path
 import types
@@ -44,7 +44,7 @@ class EnvConfig:
 
 
 def _resolve_cron_interval(expression: str) -> tuple[datetime, datetime]:
-    now = datetime.now()
+    now = datetime.now(tz=timezone.utc)
     cron = croniter(expression, now)
     until = cron.get_prev(datetime)
     since = cron.get_prev(datetime)
