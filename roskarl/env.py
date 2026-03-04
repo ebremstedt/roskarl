@@ -8,65 +8,83 @@ from urllib.parse import unquote, quote
 from datetime import datetime
 
 
-def print_if_not_set(name: str):
-    print(f"{name} is either not set or set to None.")
+def print_if_unset(name: str, print_unset: bool = True) -> None:
+    if print_unset:
+        print(f"{name} is either not set or set to None.")
 
 
-def env_var(name: str, default: Optional[str] = None) -> Optional[str]:
+def env_var(
+    name: str, default: Optional[str] = None, print_unset: bool = True
+) -> Optional[str]:
     value = os.environ.get(name)
     if not value:
-        print_if_not_set(name=name)
+        print_if_unset(name=name, print_unset=print_unset)
         if default is not None:
             return default
         return None
     return value
 
 
-def env_var_cron(name: str, default: Optional[str] = None) -> Optional[str]:
+def env_var_cron(
+    name: str, default: Optional[str] = None, print_unset: bool = True
+) -> Optional[str]:
     value = os.environ.get(name)
     if not value:
-        print_if_not_set(name=name)
+        print_if_unset(name=name, print_unset=print_unset)
         if default is not None:
             return default
         return None
     if not croniter.is_valid(expression=value):
+        if not print_unset:
+            return None
         raise ValueError("Value is not a valid cron expression.")
     return value
 
 
-def env_var_tz(name: str, default: Optional[str] = None) -> Optional[str]:
+def env_var_tz(
+    name: str, default: Optional[str] = None, print_unset: bool = True
+) -> Optional[str]:
     value = os.environ.get(name)
     if not value:
-        print_if_not_set(name=name)
+        print_if_unset(name=name, print_unset=print_unset)
         if default is not None:
             return default
         return None
     try:
         ZoneInfo(value)
     except ZoneInfoNotFoundError as e:
+        if not print_unset:
+            return None
         raise ValueError(f"Timezone string was not valid. {e}")
     return value
 
 
 def env_var_list(
-    name: str, separator: str = ",", default: Optional[list[str]] = None
+    name: str,
+    separator: str = ",",
+    default: Optional[list[str]] = None,
+    print_unset: bool = True,
 ) -> Optional[list[str]]:
     value = os.environ.get(name)
     if not value:
-        print_if_not_set(name=name)
+        print_if_unset(name=name, print_unset=print_unset)
         if default is not None:
             return default
         return None
     try:
         return [item.strip() for item in value.split(separator)]
     except Exception as e:
+        if not print_unset:
+            return None
         raise ValueError(f"Error parsing list from env var '{name}': {e}")
 
 
-def env_var_bool(name: str, default: Optional[bool] = None) -> Optional[bool]:
+def env_var_bool(
+    name: str, default: Optional[bool] = None, print_unset: bool = True
+) -> Optional[bool]:
     value = os.environ.get(name)
     if not value:
-        print_if_not_set(name=name)
+        print_if_unset(name=name, print_unset=print_unset)
         if default is not None:
             return default
         return None
@@ -74,43 +92,61 @@ def env_var_bool(name: str, default: Optional[bool] = None) -> Optional[bool]:
         return True
     if value.upper() == "FALSE":
         return False
+    if not print_unset:
+        return None
     raise ValueError(
         f"Bool must be set to true or false (case insensitive), not: '{value}'"
     )
 
 
-def env_var_int(name: str, default: Optional[int] = None) -> Optional[int]:
+def env_var_int(
+    name: str, default: Optional[int] = None, print_unset: bool = True
+) -> Optional[int]:
     value = os.environ.get(name)
     if not value:
-        print_if_not_set(name=name)
+        print_if_unset(name=name, print_unset=print_unset)
         if default is not None:
             return default
         return None
-    return int(value)
+    try:
+        return int(value)
+    except ValueError:
+        if not print_unset:
+            return None
+        raise
 
 
-def env_var_float(name: str, default: Optional[float] = None) -> Optional[float]:
+def env_var_float(
+    name: str, default: Optional[float] = None, print_unset: bool = True
+) -> Optional[float]:
     value = os.environ.get(name)
     if not value:
-        print_if_not_set(name=name)
+        print_if_unset(name=name, print_unset=print_unset)
         if default is not None:
             return default
         return None
-    return float(value)
+    try:
+        return float(value)
+    except ValueError:
+        if not print_unset:
+            return None
+        raise
 
 
 def env_var_iso8601_datetime(
-    name: str, default: Optional[datetime] = None
+    name: str, default: Optional[datetime] = None, print_unset: bool = True
 ) -> Optional[datetime]:
     value = os.environ.get(name)
     if not value:
-        print_if_not_set(name=name)
+        print_if_unset(name=name, print_unset=print_unset)
         if default is not None:
             return default
         return None
     try:
         return datetime.fromisoformat(value)
     except ValueError:
+        if not print_unset:
+            return None
         raise ValueError(
             f"'{name}' is not a valid ISO8601 datetime string: '{value}'. "
             "Expected format: 2026-01-01T00:00:00 or 2026-01-01T00:00:00+00:00"
@@ -118,22 +154,26 @@ def env_var_iso8601_datetime(
 
 
 def env_var_rfc3339_datetime(
-    name: str, default: Optional[datetime] = None
+    name: str, default: Optional[datetime] = None, print_unset: bool = True
 ) -> Optional[datetime]:
     value = os.environ.get(name)
     if not value:
-        print_if_not_set(name=name)
+        print_if_unset(name=name, print_unset=print_unset)
         if default is not None:
             return default
         return None
     try:
         dt = datetime.fromisoformat(value)
     except ValueError:
+        if not print_unset:
+            return None
         raise ValueError(
             f"'{name}' is not a valid RFC3339 datetime string: '{value}'. "
             "Expected format: 2026-01-01T00:00:00+00:00"
         )
     if dt.tzinfo is None:
+        if not print_unset:
+            return None
         raise ValueError(
             f"'{name}' is missing timezone info, RFC3339 requires it: '{value}'. "
             "Expected format: 2026-01-01T00:00:00+00:00"
@@ -176,10 +216,12 @@ class DSN:
         }
 
 
-def env_var_dsn(name: str, default: Optional[DSN] = None) -> Optional[DSN]:
+def env_var_dsn(
+    name: str, default: Optional[DSN] = None, print_unset: bool = True
+) -> Optional[DSN]:
     value = os.environ.get(name)
     if not value:
-        print_if_not_set(name=name)
+        print_if_unset(name=name, print_unset=print_unset)
         if default is not None:
             return default
         return None
@@ -226,7 +268,11 @@ def env_var_dsn(name: str, default: Optional[DSN] = None) -> Optional[DSN]:
             port=port,
             database=database,
         )
-    except ValueError as e:
-        raise ValueError(f"Failed to parse DSN string: {str(e)}")
+    except ValueError:
+        if not print_unset:
+            return None
+        raise
     except Exception as e:
+        if not print_unset:
+            return None
         raise ValueError(f"Failed to parse DSN string: Unexpected error - {str(e)}")
