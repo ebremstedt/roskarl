@@ -1,7 +1,6 @@
 import os
 import unittest
 from datetime import datetime, timezone
-
 from roskarl import (
     env_var,
     env_var_cron,

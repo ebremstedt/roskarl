@@ -1,6 +1,6 @@
 import os
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
-from croniter import croniter
+from icron import croniter
 from typing import Optional, Any
 from dataclasses import dataclass, field
 import re
