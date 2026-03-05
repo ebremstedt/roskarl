@@ -1,21 +1,15 @@
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-import importlib
-from pathlib import Path
-import types
 from roskarl import (
     env_var_bool,
     env_var_cron,
     env_var_int,
+    env_var,
     env_var_iso8601_datetime,
-    env_var_list,
-    env_var_jagged_array,
 )
 from icron import croniter
 from functools import wraps
 from typing import Callable
-import importlib.util
-import sys
 from typing import Callable
 
 
@@ -70,7 +64,7 @@ def load_env_config() -> EnvConfig:
     )
 
     return EnvConfig(
-        tags=env_var_jagged_array(name="TAGS"),
+        tags=env_var(name="TAGS"),
         cron=CronConfig(
             enabled=cron_enabled,
             expression=cron_expression,

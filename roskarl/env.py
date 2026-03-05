@@ -113,46 +113,6 @@ def env_var_float(
         raise
 
 
-def env_var_jagged_array(
-    name: str,
-    default: list[list[str]] | None = None,
-    outer_separator: str = "|",
-    inner_separator: str = ",",
-    should_print_unset: bool = True,
-) -> list[list[str]] | None:
-    """
-    Parse an environment variable as a jagged array (list of lists).
-
-    Example env var: "a,b|c,d" -> [["a", "b"], ["c", "d"]]
-
-    Args:
-        name: Environment variable name.
-        default: Returned if the variable is unset or empty.
-        outer_separator: Splits the outer list. Defaults to "|".
-        inner_separator: Splits each inner list. Defaults to ",".
-        should_print_unset: Print a message if the variable is unset.
-
-    Returns:
-        Parsed jagged array, the default value, or None if unset with no default.
-
-    Raises:
-        ValueError: If the value cannot be parsed into a valid jagged array.
-    """
-    value = os.environ.get(name)
-    if not value:
-        if should_print_unset:
-            print_unset(name)
-        return default
-    result: list[list[str]] = [
-        [item.strip() for item in group.split(inner_separator)]
-        for group in value.split(outer_separator)
-        if group.strip()
-    ]
-    if not result or any(len(inner) == 0 for inner in result):
-        raise ValueError(f"{name} is not a valid jagged array string.")
-    return result
-
-
 def env_var_iso8601_datetime(
     name: str, default: datetime | None = None, should_print_unset: bool = True
 ) -> datetime | None:
