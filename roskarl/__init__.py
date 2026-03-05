@@ -4,6 +4,7 @@ from roskarl.env import (
     env_var_float,
     env_var_int,
     env_var_list,
+    env_var_jagged_array,
     env_var,
     env_var_tz,
     env_var_dsn,
@@ -17,7 +18,6 @@ from roskarl.marshal import (
     EnvConfig,
     load_env_config,
     with_env_config,
-    get_execute_functions,
 )
 
 __all__ = [
@@ -26,6 +26,7 @@ __all__ = [
     "env_var_float",
     "env_var_int",
     "env_var_list",
+    "env_var_jagged_array",
     "env_var",
     "env_var_tz",
     "env_var_dsn",
@@ -37,5 +38,4 @@ __all__ = [
     "EnvConfig",
     "load_env_config",
     "with_env_config",
-    "get_execute_functions",
 ]

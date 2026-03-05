@@ -1,60 +1,52 @@
 import os
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from icron import croniter
-from typing import Optional, Any
+from typing import Any
 from dataclasses import dataclass, field
 import re
 from urllib.parse import unquote, quote
 from datetime import datetime
 
 
-def print_if_unset(name: str, print_unset: bool = True) -> None:
-    if print_unset:
-        print(f"{name} is either not set or set to None.")
+def print_unset(name: str) -> None:
+    print(f"{name} not set or set to None.")
 
 
 def env_var(
-    name: str, default: Optional[str] = None, print_unset: bool = True
-) -> Optional[str]:
+    name: str, default: str | None = None, should_print_unset: bool = True
+) -> str | None:
     value = os.environ.get(name)
     if not value:
-        print_if_unset(name=name, print_unset=print_unset)
-        if default is not None:
-            return default
-        return None
+        if should_print_unset:
+            print_unset(name)
+        return default
     return value
 
 
 def env_var_cron(
-    name: str, default: Optional[str] = None, print_unset: bool = True
-) -> Optional[str]:
+    name: str, default: str | None = None, should_print_unset: bool = True
+) -> str | None:
     value = os.environ.get(name)
     if not value:
-        print_if_unset(name=name, print_unset=print_unset)
-        if default is not None:
-            return default
-        return None
+        if should_print_unset:
+            print_unset(name)
+        return default
     if not croniter.is_valid(expression=value):
-        if not print_unset:
-            return None
         raise ValueError("Value is not a valid cron expression.")
     return value
 
 
 def env_var_tz(
-    name: str, default: Optional[str] = None, print_unset: bool = True
-) -> Optional[str]:
+    name: str, default: str | None = None, should_print_unset: bool = True
+) -> str | None:
     value = os.environ.get(name)
     if not value:
-        print_if_unset(name=name, print_unset=print_unset)
-        if default is not None:
-            return default
-        return None
+        if should_print_unset:
+            print_unset(name)
+        return default
     try:
         ZoneInfo(value)
     except ZoneInfoNotFoundError as e:
-        if not print_unset:
-            return None
         raise ValueError(f"Timezone string was not valid. {e}")
     return value
 
@@ -62,91 +54,116 @@ def env_var_tz(
 def env_var_list(
     name: str,
     separator: str = ",",
-    default: Optional[list[str]] = None,
-    print_unset: bool = True,
-) -> Optional[list[str]]:
+    default: list[str] | None = None,
+    should_print_unset: bool = True,
+) -> list[str] | None:
     value = os.environ.get(name)
     if not value:
-        print_if_unset(name=name, print_unset=print_unset)
-        if default is not None:
-            return default
-        return None
+        if should_print_unset:
+            print_unset(name)
+        return default
     try:
         return [item.strip() for item in value.split(separator)]
     except Exception as e:
-        if not print_unset:
-            return None
         raise ValueError(f"Error parsing list from env var '{name}': {e}")
 
 
 def env_var_bool(
-    name: str, default: Optional[bool] = None, print_unset: bool = True
-) -> Optional[bool]:
+    name: str, default: bool | None = None, should_print_unset: bool = True
+) -> bool | None:
     value = os.environ.get(name)
     if not value:
-        print_if_unset(name=name, print_unset=print_unset)
-        if default is not None:
-            return default
-        return None
+        if should_print_unset:
+            print_unset(name)
+        return default
     if value.upper() == "TRUE":
         return True
     if value.upper() == "FALSE":
         return False
-    if not print_unset:
-        return None
     raise ValueError(
         f"Bool must be set to true or false (case insensitive), not: '{value}'"
     )
 
 
 def env_var_int(
-    name: str, default: Optional[int] = None, print_unset: bool = True
-) -> Optional[int]:
+    name: str, default: int | None = None, should_print_unset: bool = True
+) -> int | None:
     value = os.environ.get(name)
     if not value:
-        print_if_unset(name=name, print_unset=print_unset)
-        if default is not None:
-            return default
-        return None
+        if should_print_unset:
+            print_unset(name)
+        return default
     try:
         return int(value)
     except ValueError:
-        if not print_unset:
-            return None
         raise
 
 
 def env_var_float(
-    name: str, default: Optional[float] = None, print_unset: bool = True
-) -> Optional[float]:
+    name: str, default: float | None = None, should_print_unset: bool = True
+) -> float | None:
     value = os.environ.get(name)
     if not value:
-        print_if_unset(name=name, print_unset=print_unset)
-        if default is not None:
-            return default
-        return None
+        if should_print_unset:
+            print_unset(name)
+        return default
     try:
         return float(value)
     except ValueError:
-        if not print_unset:
-            return None
         raise
 
 
-def env_var_iso8601_datetime(
-    name: str, default: Optional[datetime] = None, print_unset: bool = True
-) -> Optional[datetime]:
+def env_var_jagged_array(
+    name: str,
+    default: list[list[str]] | None = None,
+    outer_separator: str = "|",
+    inner_separator: str = ",",
+    should_print_unset: bool = True,
+) -> list[list[str]] | None:
+    """
+    Parse an environment variable as a jagged array (list of lists).
+
+    Example env var: "a,b|c,d" -> [["a", "b"], ["c", "d"]]
+
+    Args:
+        name: Environment variable name.
+        default: Returned if the variable is unset or empty.
+        outer_separator: Splits the outer list. Defaults to "|".
+        inner_separator: Splits each inner list. Defaults to ",".
+        should_print_unset: Print a message if the variable is unset.
+
+    Returns:
+        Parsed jagged array, the default value, or None if unset with no default.
+
+    Raises:
+        ValueError: If the value cannot be parsed into a valid jagged array.
+    """
     value = os.environ.get(name)
     if not value:
-        print_if_unset(name=name, print_unset=print_unset)
-        if default is not None:
-            return default
-        return None
+        if should_print_unset:
+            print_unset(name)
+        return default
+    result: list[list[str]] = [
+        [item.strip() for item in group.split(inner_separator)]
+        for group in value.split(outer_separator)
+        if group.strip()
+    ]
+    if not result or any(len(inner) == 0 for inner in result):
+        raise ValueError(f"{name} is not a valid jagged array string.")
+    return result
+
+
+def env_var_iso8601_datetime(
+    name: str, default: datetime | None = None, should_print_unset: bool = True
+) -> datetime | None:
+    value = os.environ.get(name)
+    if not value:
+        if should_print_unset:
+            print_unset(name)
+        return default
     try:
         return datetime.fromisoformat(value)
     except ValueError:
-        if not print_unset:
-            return None
         raise ValueError(
             f"'{name}' is not a valid ISO8601 datetime string: '{value}'. "
             "Expected format: 2026-01-01T00:00:00 or 2026-01-01T00:00:00+00:00"
@@ -154,26 +171,21 @@ def env_var_iso8601_datetime(
 
 
 def env_var_rfc3339_datetime(
-    name: str, default: Optional[datetime] = None, print_unset: bool = True
-) -> Optional[datetime]:
+    name: str, default: datetime | None = None, should_print_unset: bool = True
+) -> datetime | None:
     value = os.environ.get(name)
     if not value:
-        print_if_unset(name=name, print_unset=print_unset)
-        if default is not None:
-            return default
-        return None
+        if should_print_unset:
+            print_unset(name)
+        return default
     try:
         dt = datetime.fromisoformat(value)
     except ValueError:
-        if not print_unset:
-            return None
         raise ValueError(
             f"'{name}' is not a valid RFC3339 datetime string: '{value}'. "
             "Expected format: 2026-01-01T00:00:00+00:00"
         )
     if dt.tzinfo is None:
-        if not print_unset:
-            return None
         raise ValueError(
             f"'{name}' is missing timezone info, RFC3339 requires it: '{value}'. "
             "Expected format: 2026-01-01T00:00:00+00:00"
@@ -187,8 +199,8 @@ class DSN:
     username: str
     password: str
     hostname: str
-    port: Optional[int] = None
-    database: Optional[str] = None
+    port: int | None = None
+    database: str | None = None
     connection_string: str = field(init=False, repr=False)
 
     def __post_init__(self) -> None:
@@ -217,14 +229,13 @@ class DSN:
 
 
 def env_var_dsn(
-    name: str, default: Optional[DSN] = None, print_unset: bool = True
-) -> Optional[DSN]:
+    name: str, default: DSN | None = None, should_print_unset: bool = True
+) -> DSN | None:
     value = os.environ.get(name)
     if not value:
-        print_if_unset(name=name, print_unset=print_unset)
-        if default is not None:
-            return default
-        return None
+        if should_print_unset:
+            print_unset(name)
+        return default
     try:
         protocol_match = re.match(r"^([^:]+)://", value)
         if not protocol_match:
@@ -269,10 +280,6 @@ def env_var_dsn(
             database=database,
         )
     except ValueError:
-        if not print_unset:
-            return None
         raise
     except Exception as e:
-        if not print_unset:
-            return None
         raise ValueError(f"Failed to parse DSN string: Unexpected error - {str(e)}")
