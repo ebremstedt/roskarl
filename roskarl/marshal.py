@@ -10,7 +10,7 @@ from roskarl import (
     env_var_iso8601_datetime,
     env_var_list,
 )
-from croniter import croniter
+from icron import croniter
 from functools import wraps
 from typing import Callable
 import importlib.util
