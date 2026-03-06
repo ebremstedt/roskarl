@@ -101,4 +101,3 @@ def with_env_config(func: Callable[[EnvConfig], None]) -> Callable[[], None]:
         func(env)
 
     return wrapper
-
