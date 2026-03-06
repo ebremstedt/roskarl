@@ -10,7 +10,7 @@ Python 3.11.0+
 
 ## How to install
 ```sh
-pip install roskarl
+uv pip install roskarl
 ```
 
 ## Example usage
@@ -31,69 +31,49 @@ from roskarl import (
 ```
 
 All functions return `None` if the variable is not set. An optional `default` parameter can be provided to return a fallback value instead.
+
+### str (returns **`str`**)
 ```python
 value = env_var(name="STR_VAR", default="fallback")
 ```
 
-### str
-```python
-value = env_var(name="STR_VAR")
-```
-returns **`str`**
-
-### bool
+### bool (returns **`bool`** — accepts `true` or `false` (case insensitive))
 ```python
 value = env_var_bool(name="BOOL_VAR")
 ```
-returns **`bool`** — accepts `true` or `false` (case insensitive)
 
-### tz
+### tz (returns **`str`** if value is a valid IANA timezone (e.g. `Europe/Stockholm`))
 ```python
 value = env_var_tz(name="TZ_VAR")
 ```
-returns **`str`** if value is a valid IANA timezone (e.g. `Europe/Stockholm`)
 
-### list
+### list (returns **`list[str]`** if value is splittable by separator)
 ```python
 value = env_var_list(name="LIST_VAR", separator="|")
 ```
-returns **`list[str]`** if value is splittable by separator
 
-### int
+### int (returns **`int`** if value is numeric)
 ```python
 value = env_var_int(name="INT_VAR")
 ```
-returns **`int`** if value is numeric
 
-### float
+### float (returns **`float`** if value is a float)
 ```python
 value = env_var_float(name="FLOAT_VAR")
 ```
-returns **`float`** if value is a float
-
-### cron
+### cron (returns **`str`** if value is a valid cron expression)
 ```python
 value = env_var_cron(name="CRON_EXPRESSION_VAR")
 ```
-returns **`str`** if value is a valid cron expression
 
-### datetime (ISO8601)
+### datetime (ISO8601) (returns **`datetime`** if value is a valid ISO8601 datetime string — timezone is optional)
 ```python
 value = env_var_iso8601_datetime(name="DATETIME_VAR")
 ```
-returns **`datetime`** if value is a valid ISO8601 datetime string — timezone is optional
-```
-2026-01-01T00:00:00
-2026-01-01T00:00:00+00:00
-```
 
-### datetime (RFC3339)
+### datetime (RFC3339) (returns **`datetime`** if value is a valid [RFC3339](https://www.rfc-editor.org/rfc/rfc3339) datetime string — timezone is required)
 ```python
 value = env_var_rfc3339_datetime(name="DATETIME_VAR")
-```
-returns **`datetime`** if value is a valid [RFC3339](https://www.rfc-editor.org/rfc/rfc3339) datetime string — timezone is required
-```
-2026-01-01T00:00:00+00:00
 ```
 
 ### DSN

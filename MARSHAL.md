@@ -1,14 +1,22 @@
 # Marshal
 
-Marshals environment variables into typed configuration objects. Requires `croniter`:
-```sh
-pip install croniter
-```
+Marshals (some) environment variables into typed configuration objects.
+## Usage (function)
 ```python
-from roskarl.marshal import load_env_config
+from roskarl.marshal import load_env_config, EnvConfig
 
-env = load_env_config()
+env: EnvConfig = load_env_config()
 ```
+
+## Usage (decorator)
+```python
+from roskarl.marshal import with_env_config, EnvConfig
+
+@with_env_config
+def execute(env: EnvConfig):
+    pass
+```
+
 
 Raises `ValueError` if both `CRON_ENABLED` and `BACKFILL_ENABLED` are `true`.
 
@@ -50,16 +58,4 @@ def run(env: EnvConfig) -> None:
     )
 
 run()
-```
-
-### `get_execute_functions`
-
-Loads `execute` functions from Python model files in a given folder, with optional filtering by model name or tag.
-
-Raises `ValueError` if both `models` and `tags` are provided simultaneously.
-```python
-from roskarl.marshal import get_execute_functions
-
-functions = get_execute_functions(folder="src/models", models=["orders", "customers"])
-functions = get_execute_functions(folder="src/models", tags=["finance"])
 ```
