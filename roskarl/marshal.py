@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from roskarl import (
     env_var_bool,
     env_var_cron,
@@ -10,8 +10,6 @@ from roskarl import (
 from icron import croniter
 from functools import wraps
 from typing import Callable
-from typing import Callable
-from datetime import datetime, timezone, timedelta
 
 
 @dataclass
@@ -32,7 +30,7 @@ class BackfillConfig:
 
 @dataclass
 class EnvConfig:
-    tags: list[list[str]] | None
+    tags: str | None
     cron: CronConfig
     backfill: BackfillConfig
     debug: bool = field(default=False)
@@ -71,7 +69,7 @@ def load_env_config() -> EnvConfig:
     )
 
     return EnvConfig(
-        tags=env_var(name="TAGS"),
+        tags=env_var(name="TAGS", required=True),
         cron=CronConfig(
             enabled=cron_enabled,
             expression=cron_expression,
