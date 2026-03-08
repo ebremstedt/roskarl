@@ -13,37 +13,58 @@ def print_unset(name: str) -> None:
 
 
 def env_var(
-    name: str, default: str | None = None, should_print_unset: bool = True
+    name: str,
+    default: str | None = None,
+    should_print_unset: bool = True,
+    required: bool = False,
 ) -> str | None:
     value = os.environ.get(name)
     if not value:
+        if default is not None:
+            return default
+        if required:
+            raise ValueError(f"Environment variable '{name}' is not set")
         if should_print_unset:
             print_unset(name)
-        return default
+        return None
     return value
 
 
 def env_var_cron(
-    name: str, default: str | None = None, should_print_unset: bool = True
+    name: str,
+    default: str | None = None,
+    should_print_unset: bool = True,
+    required: bool = False,
 ) -> str | None:
     value = os.environ.get(name)
     if not value:
+        if default is not None:
+            return default
+        if required:
+            raise ValueError(f"Environment variable '{name}' is not set")
         if should_print_unset:
             print_unset(name)
-        return default
+        return None
     if not croniter.is_valid(expression=value):
         raise ValueError("Value is not a valid cron expression.")
     return value
 
 
 def env_var_tz(
-    name: str, default: str | None = None, should_print_unset: bool = True
+    name: str,
+    default: str | None = None,
+    should_print_unset: bool = True,
+    required: bool = False,
 ) -> str | None:
     value = os.environ.get(name)
     if not value:
+        if default is not None:
+            return default
+        if required:
+            raise ValueError(f"Environment variable '{name}' is not set")
         if should_print_unset:
             print_unset(name)
-        return default
+        return None
     try:
         ZoneInfo(value)
     except ZoneInfoNotFoundError as e:
@@ -56,12 +77,17 @@ def env_var_list(
     separator: str = ",",
     default: list[str] | None = None,
     should_print_unset: bool = True,
+    required: bool = False,
 ) -> list[str] | None:
     value = os.environ.get(name)
     if not value:
+        if default is not None:
+            return default
+        if required:
+            raise ValueError(f"Environment variable '{name}' is not set")
         if should_print_unset:
             print_unset(name)
-        return default
+        return None
     try:
         return [item.strip() for item in value.split(separator)]
     except Exception as e:
@@ -69,13 +95,20 @@ def env_var_list(
 
 
 def env_var_bool(
-    name: str, default: bool | None = None, should_print_unset: bool = True
+    name: str,
+    default: bool | None = None,
+    should_print_unset: bool = True,
+    required: bool = False,
 ) -> bool | None:
     value = os.environ.get(name)
     if not value:
+        if default is not None:
+            return default
+        if required:
+            raise ValueError(f"Environment variable '{name}' is not set")
         if should_print_unset:
             print_unset(name)
-        return default
+        return None
     if value.upper() == "TRUE":
         return True
     if value.upper() == "FALSE":
@@ -86,13 +119,20 @@ def env_var_bool(
 
 
 def env_var_int(
-    name: str, default: int | None = None, should_print_unset: bool = True
+    name: str,
+    default: int | None = None,
+    should_print_unset: bool = True,
+    required: bool = False,
 ) -> int | None:
     value = os.environ.get(name)
     if not value:
+        if default is not None:
+            return default
+        if required:
+            raise ValueError(f"Environment variable '{name}' is not set")
         if should_print_unset:
             print_unset(name)
-        return default
+        return None
     try:
         return int(value)
     except ValueError:
@@ -100,13 +140,20 @@ def env_var_int(
 
 
 def env_var_float(
-    name: str, default: float | None = None, should_print_unset: bool = True
+    name: str,
+    default: float | None = None,
+    should_print_unset: bool = True,
+    required: bool = False,
 ) -> float | None:
     value = os.environ.get(name)
     if not value:
+        if default is not None:
+            return default
+        if required:
+            raise ValueError(f"Environment variable '{name}' is not set")
         if should_print_unset:
             print_unset(name)
-        return default
+        return None
     try:
         return float(value)
     except ValueError:
@@ -114,13 +161,20 @@ def env_var_float(
 
 
 def env_var_iso8601_datetime(
-    name: str, default: datetime | None = None, should_print_unset: bool = True
+    name: str,
+    default: datetime | None = None,
+    should_print_unset: bool = True,
+    required: bool = False,
 ) -> datetime | None:
     value = os.environ.get(name)
     if not value:
+        if default is not None:
+            return default
+        if required:
+            raise ValueError(f"Environment variable '{name}' is not set")
         if should_print_unset:
             print_unset(name)
-        return default
+        return None
     try:
         return datetime.fromisoformat(value)
     except ValueError:
@@ -131,13 +185,20 @@ def env_var_iso8601_datetime(
 
 
 def env_var_rfc3339_datetime(
-    name: str, default: datetime | None = None, should_print_unset: bool = True
+    name: str,
+    default: datetime | None = None,
+    should_print_unset: bool = True,
+    required: bool = False,
 ) -> datetime | None:
     value = os.environ.get(name)
     if not value:
+        if default is not None:
+            return default
+        if required:
+            raise ValueError(f"Environment variable '{name}' is not set")
         if should_print_unset:
             print_unset(name)
-        return default
+        return None
     try:
         dt = datetime.fromisoformat(value)
     except ValueError:
