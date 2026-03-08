@@ -188,14 +188,12 @@ class DSN:
         }
 
 
-def env_var_dsn(
-    name: str, default: DSN | None = None, should_print_unset: bool = True
-) -> DSN | None:
+def env_var_dsn(name: str, default: DSN) -> DSN:
     value = os.environ.get(name)
     if not value:
-        if should_print_unset:
-            print_unset(name)
-        return default
+        if default is not None:
+            return default
+        raise ValueError(f"Environment variable '{name}' is not set")
     try:
         protocol_match = re.match(r"^([^:]+)://", value)
         if not protocol_match:
