@@ -162,6 +162,7 @@ class DSN:
     port: int | None = None
     database: str | None = None
     connection_string: str = field(init=False, repr=False)
+    libpq_string: str = field(init=False, repr=False)
 
     def __post_init__(self) -> None:
         port_str = f":{self.port}" if self.port is not None else ""
@@ -169,6 +170,16 @@ class DSN:
         quoted_username = quote(self.username, safe="")
         quoted_password = quote(self.password, safe="")
         self.connection_string = f"{self.protocol}://{quoted_username}:{quoted_password}@{self.hostname}{port_str}{db_str}"
+        parts = [
+            f"host={self.hostname}",
+            f"user={self.username}",
+            f"password={self.password}",
+        ]
+        if self.port is not None:
+            parts.append(f"port={self.port}")
+        if self.database is not None:
+            parts.append(f"dbname={self.database}")
+        self.libpq_string = " ".join(parts)
 
     def __str__(self) -> str:
         port_str = f":{self.port}" if self.port is not None else ""
