@@ -217,7 +217,9 @@ def env_var_dsn(name: str, default: DSN) -> DSN:
                     break
             i += 1
         if colon_pos is None:
-            raise ValueError("Invalid DSN: No colon separator found in credentials")
+            raise ValueError(
+                "Invalid DSN: No colon separator found in connection string"
+            )
         username = unquote(credentials[:colon_pos])
         password = unquote(credentials[colon_pos + 1 :])
         database_parts = host_part.split("/", 1)
