@@ -206,7 +206,15 @@ class TestEnvVarUtils(unittest.TestCase):
     # env_var_dsn
     def test_env_var_dsn_valid_full(self):
         os.environ["TEST_DSN"] = "postgresql://user:password@localhost:5432/mydb"
-        result = env_var_dsn("TEST_DSN")
+        dsn = DSN(
+            protocol="postgresql",
+            username="user",
+            password="password",
+            hostname="localhost",
+            port=5432,
+            database="wee",
+        )
+        result = env_var_dsn("TEST_DSN", default=dsn)
         self.assertIsInstance(result, DSN)
         self.assertEqual(result.protocol, "postgresql")
         self.assertEqual(result.username, "user")
@@ -217,34 +225,76 @@ class TestEnvVarUtils(unittest.TestCase):
 
     def test_env_var_dsn_valid_no_port(self):
         os.environ["TEST_DSN"] = "postgresql://user:password@localhost/mydb"
-        result = env_var_dsn("TEST_DSN")
+        dsn = DSN(
+            protocol="postgresql",
+            username="user",
+            password="password",
+            hostname="localhost",
+            port=5432,
+            database="wee",
+        )
+        result = env_var_dsn("TEST_DSN", default=dsn)
         self.assertIsNone(result.port)
 
     def test_env_var_dsn_valid_no_database(self):
         os.environ["TEST_DSN"] = "postgresql://user:password@localhost:5432"
-        result = env_var_dsn("TEST_DSN")
+        dsn = DSN(
+            protocol="postgresql",
+            username="user",
+            password="password",
+            hostname="localhost",
+            port=5432,
+            database="wee",
+        )
+        result = env_var_dsn("TEST_DSN", default=dsn)
         self.assertIsNone(result.database)
 
     def test_env_var_dsn_connection_string(self):
         os.environ["TEST_DSN"] = "postgresql://user:password@localhost:5432/mydb"
-        result = env_var_dsn("TEST_DSN")
+        dsn = DSN(
+            protocol="postgresql",
+            username="user",
+            password="password",
+            hostname="localhost",
+            port=5432,
+            database="wee",
+        )
+        result = env_var_dsn("TEST_DSN", default=dsn)
         self.assertEqual(
             result.connection_string, "postgresql://user:password@localhost:5432/mydb"
         )
 
     def test_env_var_dsn_str_masks_password(self):
         os.environ["TEST_DSN"] = "postgresql://user:password@localhost:5432/mydb"
-        result = env_var_dsn("TEST_DSN")
+        dsn = DSN(
+            protocol="postgresql",
+            username="user",
+            password="password",
+            hostname="localhost",
+            port=5432,
+            database="wee",
+        )
+        result = env_var_dsn("TEST_DSN", default=dsn)
         self.assertIn("****", str(result))
         self.assertNotIn("password", str(result))
 
     def test_env_var_dsn_invalid(self):
         os.environ["TEST_DSN"] = "not-a-dsn"
+        dsn = DSN(
+            protocol="postgresql",
+            username="user",
+            password="password",
+            hostname="localhost",
+            port=5432,
+            database="wee",
+        )
+        with self.assertRaises(ValueError):
+            env_var_dsn("TEST_DSN", default=dsn)
+
+    def test_env_var_dsn_not_set_raises(self):
+        os.environ.pop("TEST_DSN", None)
         with self.assertRaises(ValueError):
             env_var_dsn("TEST_DSN")
-
-    def test_env_var_dsn_not_set_returns_none(self):
-        self.assertIsNone(env_var_dsn("TEST_DSN"))
 
     def test_env_var_dsn_not_set_returns_default(self):
         default = DSN(
@@ -256,7 +306,15 @@ class TestEnvVarUtils(unittest.TestCase):
         os.environ["TEST_DSN"] = (
             "postgresql://user%40name:p%40ssword@localhost:5432/mydb"
         )
-        result = env_var_dsn("TEST_DSN")
+        dsn = DSN(
+            protocol="postgresql",
+            username="user",
+            password="password",
+            hostname="localhost",
+            port=5432,
+            database="wee",
+        )
+        result = env_var_dsn("TEST_DSN", default=dsn)
         self.assertEqual(result.username, "user@name")
         self.assertEqual(result.password, "p@ssword")
 

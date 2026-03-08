@@ -188,7 +188,7 @@ class DSN:
         }
 
 
-def env_var_dsn(name: str, default: DSN) -> DSN:
+def env_var_dsn(name: str, default: DSN | None = None) -> DSN:
     value = os.environ.get(name)
     if not value:
         if default is not None:
