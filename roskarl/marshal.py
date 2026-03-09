@@ -25,7 +25,6 @@ class BackfillConfig:
     enabled: bool
     since: datetime | None
     until: datetime | None
-    batch_size: int | None
 
 
 @dataclass
@@ -95,9 +94,6 @@ def load_env_config() -> EnvConfig:
             if backfill_enabled
             else None,
             until=env_var_iso8601_datetime(name="BACKFILL_UNTIL")
-            if backfill_enabled
-            else None,
-            batch_size=env_var_int(name="BACKFILL_BATCH_SIZE")
             if backfill_enabled
             else None,
         ),
