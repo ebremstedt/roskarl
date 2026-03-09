@@ -36,10 +36,12 @@ class EnvConfig:
     debug: bool = field(default=False)
 
     def __str__(self) -> str:
-        tags_str = (
-            " | ".join(", ".join(inner) for inner in self.tags) if self.tags else "None"
-        )
-        return f"EnvConfig(tags={tags_str}, cron={self.cron}, backfill={self.backfill}, debug={self.debug})"
+        return f"EnvConfig(tags={self.tags}, cron={self.cron}, backfill={self.backfill}, debug={self.debug})"
+
+    def debugprint(self, msg: str) -> None:
+        if self.debug:
+            ts = datetime.now(tz=timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+            print(f"{ts} {msg}")
 
 
 def _resolve_cron_interval(expression: str) -> tuple[datetime, datetime]:
