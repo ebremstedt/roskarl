@@ -43,6 +43,17 @@ class EnvConfig:
             ts = datetime.now(tz=timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
             print(f"{ts} {msg}")
 
+    def __post_init__(self) -> None:
+        print(f"tags:             {self.tags}")
+        print(f"debug:            {self.debug}")
+        if self.cron.enabled:
+            print(f"cron.expression:  {self.cron.expression}")
+            print(f"cron.since:       {self.cron.since}")
+            print(f"cron.until:       {self.cron.until}")
+        if self.backfill.enabled:
+            print(f"backfill.since:   {self.backfill.since}")
+            print(f"backfill.until:   {self.backfill.until}")
+
 
 def _resolve_cron_interval(expression: str) -> tuple[datetime, datetime]:
     now = datetime.now(tz=timezone.utc)
