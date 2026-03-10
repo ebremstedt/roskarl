@@ -28,14 +28,14 @@ class BackfillConfig:
 
 @dataclass
 class EnvConfig:
-    name: str
+    pipeline_environment: str
     tags: str | None
     cron: CronConfig
     backfill: BackfillConfig
     debug: bool = field(default=False)
 
     def __str__(self) -> str:
-        return f"EnvConfig(name={self.name}, tags={self.tags}, cron={self.cron}, backfill={self.backfill}, debug={self.debug})"
+        return f"EnvConfig(name={self.pipeline_environment}, tags={self.tags}, cron={self.cron}, backfill={self.backfill}, debug={self.debug})"
 
     def debugprint(self, msg: str) -> None:
         if self.debug:
@@ -43,7 +43,7 @@ class EnvConfig:
             print(f"{ts} {msg}")
 
     def __post_init__(self) -> None:
-        print(f"name:             {self.name}")
+        print(f"name:             {self.pipeline_environment}")
         print(f"tags:             {self.tags}")
         print(f"debug:            {self.debug}")
         if self.cron.enabled:
@@ -82,7 +82,7 @@ def load_env_config() -> EnvConfig:
     )
 
     return EnvConfig(
-        name=env_var(name="PIPELINE_ENVIRONMENT", required=True),
+        pipeline_environment=env_var(name="PIPELINE_ENVIRONMENT", required=True),
         tags=env_var(name="TAGS", required=True),
         cron=CronConfig(
             enabled=cron_enabled,
