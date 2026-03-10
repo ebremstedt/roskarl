@@ -3,7 +3,6 @@ from datetime import datetime, timezone, timedelta
 from roskarl import (
     env_var_bool,
     env_var_cron,
-    env_var_int,
     env_var,
     env_var_iso8601_datetime,
 )
@@ -29,7 +28,7 @@ class BackfillConfig:
 
 @dataclass
 class EnvConfig:
-    name: str | None
+    name: str
     tags: str | None
     cron: CronConfig
     backfill: BackfillConfig
@@ -83,7 +82,7 @@ def load_env_config() -> EnvConfig:
     )
 
     return EnvConfig(
-        name=env_var(name="ENVIRONMENT", required=False),
+        name=env_var(name="PIPELINE_ENVIRONMENT", required=True),
         tags=env_var(name="TAGS", required=True),
         cron=CronConfig(
             enabled=cron_enabled,
