@@ -2,8 +2,6 @@
 
 Is a **tiny** module for environment variables
 
-For pipeline configuration via environment variables, see [Marshal](MARSHAL.md).
-
 ## Requires
 
 Python 3.11.0+
