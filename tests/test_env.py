@@ -36,23 +36,6 @@ class TestEnvVarUtils(unittest.TestCase):
     def test_env_var_not_set_returns_default(self):
         self.assertEqual(env_var("TEST_STR", default="fallback"), "fallback")
 
-    # env_var_cron
-    def test_env_var_cron_valid(self):
-        os.environ["TEST_CRON"] = "0 0 * * *"
-        self.assertEqual(env_var_cron("TEST_CRON"), "0 0 * * *")
-
-    def test_env_var_cron_invalid(self):
-        os.environ["TEST_CRON"] = "invalid cron"
-        with self.assertRaises(ValueError) as context:
-            env_var_cron("TEST_CRON")
-        self.assertIn("Value is not a valid cron expression.", str(context.exception))
-
-    def test_env_var_cron_not_set_returns_none(self):
-        self.assertIsNone(env_var_cron("TEST_CRON"))
-
-    def test_env_var_cron_not_set_returns_default(self):
-        self.assertEqual(env_var_cron("TEST_CRON", default="0 * * * *"), "0 * * * *")
-
     # env_var_tz
     def test_env_var_tz_valid(self):
         os.environ["TEST_TZ"] = "America/New_York"

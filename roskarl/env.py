@@ -1,15 +1,11 @@
 import os
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
-from icron import croniter
 from typing import Any
 from dataclasses import dataclass, field
 import re
 from urllib.parse import unquote, quote
 from datetime import datetime
-
-
-def print_unset(name: str) -> None:
-    print(f"{name} not set or set to None.")
+from roskarl.notify import print_unset
 
 
 def env_var(
@@ -27,26 +23,6 @@ def env_var(
         if should_print_unset:
             print_unset(name)
         return None
-    return value
-
-
-def env_var_cron(
-    name: str,
-    default: str | None = None,
-    should_print_unset: bool = True,
-    required: bool = False,
-) -> str | None:
-    value = os.environ.get(name)
-    if not value:
-        if default is not None:
-            return default
-        if required:
-            raise ValueError(f"Environment variable '{name}' is not set")
-        if should_print_unset:
-            print_unset(name)
-        return None
-    if not croniter.is_valid(expression=value):
-        raise ValueError("Value is not a valid cron expression.")
     return value
 
 
@@ -216,6 +192,25 @@ def env_var_rfc3339_datetime(
 
 @dataclass
 class DSN:
+    """
+    Represents a parsed Data Source Name (DSN) connection string.
+
+    Attributes:
+        protocol: Database protocol (e.g. postgresql, mssql)
+        username: Database user
+        password: Database password
+        hostname: Database host
+        port: Database port
+        database: Database name
+        connection_string: Auto-built URI connection string (e.g. postgresql://user:pass@host:port/db)
+        libpq_string: Auto-built libpq connection string (e.g. host=... user=... password=...)
+
+    Example:
+        dsn = DSN(protocol="postgresql", username="user", password="pass", hostname="localhost", port=5432, database="mydb")
+        dsn.connection_string  # postgresql://user:pass@localhost:5432/mydb
+        dsn.build_mssql_string()  # DRIVER={ODBC Driver 18 for SQL Server};SERVER=...
+    """
+
     protocol: str
     username: str
     password: str
@@ -225,12 +220,14 @@ class DSN:
     connection_string: str = field(init=False, repr=False)
     libpq_string: str = field(init=False, repr=False)
 
-    def __post_init__(self) -> None:
+    def _build_connection_string(self) -> str:
         port_str = f":{self.port}" if self.port is not None else ""
         db_str = f"/{self.database}" if self.database is not None else ""
         quoted_username = quote(self.username, safe="")
         quoted_password = quote(self.password, safe="")
-        self.connection_string = f"{self.protocol}://{quoted_username}:{quoted_password}@{self.hostname}{port_str}{db_str}"
+        return f"{self.protocol}://{quoted_username}:{quoted_password}@{self.hostname}{port_str}{db_str}"
+
+    def _build_libpq_string(self) -> str:
         parts = [
             f"host={self.hostname}",
             f"user={self.username}",
@@ -240,7 +237,46 @@ class DSN:
             parts.append(f"port={self.port}")
         if self.database is not None:
             parts.append(f"dbname={self.database}")
-        self.libpq_string = " ".join(parts)
+        return " ".join(parts)
+
+    def build_mssql_string(
+        self,
+        driver: str = "ODBC Driver 18 for SQL Server",
+        encrypt: bool = True,
+        trust_server_certificate: bool = True,
+    ) -> str:
+        """
+        Builds an ODBC connection string for Microsoft SQL Server.
+
+        Args:
+            driver: ODBC driver name
+            encrypt: Whether to encrypt the connection
+            trust_server_certificate: Whether to trust the server certificate
+
+        Returns:
+            ODBC connection string e.g. DRIVER={ODBC Driver 18 for SQL Server};SERVER=host,1433;...
+
+        Raises:
+            ValueError: If port or database are None
+        """
+        if self.port is None:
+            raise ValueError("port is required for MSSQL connection string")
+        if self.database is None:
+            raise ValueError("database is required for MSSQL connection string")
+        yes_no = lambda b: "yes" if b else "no"
+        return (
+            f"DRIVER={{{driver}}};"
+            f"SERVER={self.hostname},{self.port};"
+            f"DATABASE={self.database};"
+            f"UID={self.username};"
+            f"PWD={self.password};"
+            f"Encrypt={yes_no(encrypt)};"
+            f"TrustServerCertificate={yes_no(trust_server_certificate)}"
+        )
+
+    def __post_init__(self) -> None:
+        self.connection_string = self._build_connection_string()
+        self.libpq_string = self._build_libpq_string()
 
     def __str__(self) -> str:
         port_str = f":{self.port}" if self.port is not None else ""
