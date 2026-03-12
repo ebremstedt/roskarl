@@ -1,5 +1,4 @@
 from typing import Annotated
-from annotated_types import Predicate
 import os
 from roskarl.notify import print_unset
 from icron import croniter
@@ -17,11 +16,7 @@ def has_offset(expr: str) -> bool:
     return any(_field_has_offset(f) for f in expr.split())
 
 
-def _no_offset(value: str) -> bool:
-    return not has_offset(value)
-
-
-CronBatch = Annotated[str, Predicate(_no_offset)]
+CronBatch = Annotated[str, "Cron expression with no offset fields"]
 """
 A subset of cron expressions that only allows interval-based scheduling with no offset.
 Valid fields are limited to '*', '0', or '*/N', ensuring the schedule aligns to zero (e.g. '0 */2 * * *').
