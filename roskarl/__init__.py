@@ -10,7 +10,13 @@ from roskarl.env import (
     env_var_iso8601_datetime,
     DSN,
 )
-from roskarl.cron import env_var_cron, env_var_cron_batch, CronBatch
+from roskarl.cron import (
+    env_var_cron,
+    env_var_cron_batch,
+    env_var_cron_batch_extended,
+    CronBatch,
+    CronBatchExtended,
+)
 
 __all__ = [
     "env_var_bool",
@@ -26,5 +32,7 @@ __all__ = [
     "DSN",
     "env_var_cron",
     "env_var_cron_batch",
+    "env_var_cron_batch_extended",
     "CronBatch",
+    "CronBatchExtended",
 ]

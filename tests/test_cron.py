@@ -1,6 +1,11 @@
 import pytest
 from unittest.mock import patch
-from roskarl.cron import has_offset, env_var_cron, env_var_cron_batch
+from roskarl.cron import (
+    has_offset,
+    env_var_cron,
+    env_var_cron_batch,
+    env_var_cron_batch_extended,
+)
 
 
 class TestHasOffset:
@@ -92,3 +97,51 @@ class TestEnvVarCronBatch:
     def test_returns_none_when_unset(self):
         with patch.dict("os.environ", {}, clear=True):
             assert env_var_cron_batch("MY_CRON", should_print_unset=False) is None
+
+
+class TestEnvVarCronBatchExtended:
+    def test_valid_6_field_no_offset(self):
+        with patch.dict("os.environ", {"MY_CRON": "0 */2 * * * *"}):
+            assert env_var_cron_batch_extended("MY_CRON") == "0 */2 * * * *"
+
+    def test_raises_on_5_field(self):
+        with patch.dict("os.environ", {"MY_CRON": "0 * * * *"}):
+            with pytest.raises(ValueError, match="6-field"):
+                env_var_cron_batch_extended("MY_CRON")
+
+    def test_raises_on_offset(self):
+        with patch.dict("os.environ", {"MY_CRON": "5 * * * * *"}):
+            with pytest.raises(ValueError, match="has a cron offset"):
+                env_var_cron_batch_extended("MY_CRON")
+
+    def test_valid_default(self):
+        with patch.dict("os.environ", {}, clear=True):
+            assert (
+                env_var_cron_batch_extended(
+                    "MY_CRON", default="0 0 * * * *", should_print_unset=False
+                )
+                == "0 0 * * * *"
+            )
+
+    def test_required_raises_when_unset(self):
+        with patch.dict("os.environ", {}, clear=True):
+            with pytest.raises(ValueError, match="is not set"):
+                env_var_cron_batch_extended("MY_CRON", required=True)
+
+    def test_returns_none_when_unset(self):
+        with patch.dict("os.environ", {}, clear=True):
+            assert (
+                env_var_cron_batch_extended("MY_CRON", should_print_unset=False) is None
+            )
+
+    def test_secondly(self):
+        with patch.dict("os.environ", {"MY_CRON": "* * * * * *"}):
+            assert env_var_cron_batch_extended("MY_CRON") == "* * * * * *"
+
+    def test_every_minute_extended(self):
+        with patch.dict("os.environ", {"MY_CRON": "0 * * * * *"}):
+            assert env_var_cron_batch_extended("MY_CRON") == "0 * * * * *"
+
+    def test_weekly_extended(self):
+        with patch.dict("os.environ", {"MY_CRON": "0 0 0 * * 0"}):
+            assert env_var_cron_batch_extended("MY_CRON") == "0 0 0 * * 0"
