@@ -33,6 +33,18 @@ class TestHasOffset:
     def test_offset_dom(self):
         assert has_offset("0 */2 2 * *") is True
 
+    def test_dom_1_is_not_offset(self):
+        assert has_offset("0 0 1 * *") is False
+
+    def test_dom_1_extended_is_not_offset(self):
+        assert has_offset("0 0 0 1 * *") is False
+
+    def test_dom_2_is_offset(self):
+        assert has_offset("0 0 2 * *") is True
+
+    def test_minute_1_is_still_offset(self):
+        assert has_offset("1 * * * *") is True
+
 
 class TestEnvVarCron:
     def test_valid_cron(self):
@@ -98,6 +110,10 @@ class TestEnvVarCronBatch:
         with patch.dict("os.environ", {}, clear=True):
             assert env_var_cron_batch("MY_CRON", should_print_unset=False) is None
 
+    def test_monthly(self):
+        with patch.dict("os.environ", {"MY_CRON": "0 0 1 * *"}):
+            assert env_var_cron_batch("MY_CRON") == "0 0 1 * *"
+
 
 class TestEnvVarCronBatchExtended:
     def test_valid_6_field_no_offset(self):
@@ -145,3 +161,7 @@ class TestEnvVarCronBatchExtended:
     def test_weekly_extended(self):
         with patch.dict("os.environ", {"MY_CRON": "0 0 0 * * 0"}):
             assert env_var_cron_batch_extended("MY_CRON") == "0 0 0 * * 0"
+
+    def test_monthly_extended(self):
+        with patch.dict("os.environ", {"MY_CRON": "0 0 0 1 * *"}):
+            assert env_var_cron_batch_extended("MY_CRON") == "0 0 0 1 * *"

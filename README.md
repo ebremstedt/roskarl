@@ -59,7 +59,7 @@ value = env_var_int(name="INT_VAR")
 ```python
 value = env_var_float(name="FLOAT_VAR")
 ```
-### cron (returns **`str`** if value is a valid cron expression)
+### cron — [full docs](docs/cron.md) (returns **`str`** if value is a valid cron expression)
 ```python
 value = env_var_cron(name="CRON_EXPRESSION_VAR")
 ```
