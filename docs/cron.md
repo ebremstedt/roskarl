@@ -19,6 +19,8 @@ Rejects expressions with offsets — intended for expressing **batch frequency**
 
 ### Shortcuts
 
+Aliases can be passed directly as the env var value or as the `default` argument — they are resolved before validation.
+
 | Alias        | Expression    |
 |--------------|---------------|
 | `@minutely`  | `* * * * *`   |
@@ -36,6 +38,8 @@ from roskarl.cron import CRON_BATCH_SHORTCUTS
 Same as `env_var_cron_batch` but expects a **6-field** expression (`second minute hour day month weekday`), enabling sub-minute granularity.
 
 ### Shortcuts
+
+Aliases can be passed directly as the env var value or as the `default` argument — they are resolved before validation.
 
 | Alias        | Expression      |
 |--------------|-----------------|
