@@ -5,6 +5,8 @@ from roskarl.cron import (
     env_var_cron,
     env_var_cron_batch,
     env_var_cron_batch_extended,
+    CRON_BATCH_SHORTCUTS,
+    CRON_BATCH_EXTENDED_SHORTCUTS,
 )
 
 
@@ -114,6 +116,19 @@ class TestEnvVarCronBatch:
         with patch.dict("os.environ", {"MY_CRON": "0 0 1 * *"}):
             assert env_var_cron_batch("MY_CRON") == "0 0 1 * *"
 
+    @pytest.mark.parametrize("alias,expression", CRON_BATCH_SHORTCUTS.items())
+    def test_shortcut_from_env(self, alias, expression):
+        with patch.dict("os.environ", {"MY_CRON": alias}):
+            assert env_var_cron_batch("MY_CRON") == expression
+
+    @pytest.mark.parametrize("alias,expression", CRON_BATCH_SHORTCUTS.items())
+    def test_shortcut_as_default(self, alias, expression):
+        with patch.dict("os.environ", {}, clear=True):
+            assert (
+                env_var_cron_batch("MY_CRON", default=alias, should_print_unset=False)
+                == expression
+            )
+
 
 class TestEnvVarCronBatchExtended:
     def test_valid_6_field_no_offset(self):
@@ -165,3 +180,18 @@ class TestEnvVarCronBatchExtended:
     def test_monthly_extended(self):
         with patch.dict("os.environ", {"MY_CRON": "0 0 0 1 * *"}):
             assert env_var_cron_batch_extended("MY_CRON") == "0 0 0 1 * *"
+
+    @pytest.mark.parametrize("alias,expression", CRON_BATCH_EXTENDED_SHORTCUTS.items())
+    def test_shortcut_from_env(self, alias, expression):
+        with patch.dict("os.environ", {"MY_CRON": alias}):
+            assert env_var_cron_batch_extended("MY_CRON") == expression
+
+    @pytest.mark.parametrize("alias,expression", CRON_BATCH_EXTENDED_SHORTCUTS.items())
+    def test_shortcut_as_default(self, alias, expression):
+        with patch.dict("os.environ", {}, clear=True):
+            assert (
+                env_var_cron_batch_extended(
+                    "MY_CRON", default=alias, should_print_unset=False
+                )
+                == expression
+            )

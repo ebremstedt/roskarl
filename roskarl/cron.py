@@ -109,17 +109,31 @@ def env_var_cron_batch(
 
     Same as env_var_cron but additionally enforces no offset on any field,
     making it suitable for expressing batch frequency rather than a specific point in time.
+    Accepts shortcut aliases from CRON_BATCH_SHORTCUTS (e.g. '@monthly').
 
     Raises ValueError if the value is not a valid cron expression, has an offset on any
     field, or if required is True and the variable is not set.
     """
-    value = env_var_cron(
-        name=name,
-        default=default,
-        should_print_unset=should_print_unset,
-        required=required,
-    )
-    if value is not None and has_offset(value):
+    raw = os.environ.get(name)
+    value = CRON_BATCH_SHORTCUTS.get(raw, raw)
+    default = CRON_BATCH_SHORTCUTS.get(default, default)
+    if value is None:
+        if default is not None:
+            if has_offset(default):
+                raise ValueError(
+                    f"Environment variable '{name}' has a cron offset: '{default}'"
+                )
+            return default
+        if required:
+            raise ValueError(f"Environment variable '{name}' is not set")
+        if should_print_unset:
+            print_unset(name)
+        return None
+    if not croniter.is_valid(expression=value):
+        raise ValueError(
+            f"Environment variable '{name}' is not a valid cron expression."
+        )
+    if has_offset(value):
         raise ValueError(f"Environment variable '{name}' has a cron offset: '{value}'")
     return value
 
@@ -139,7 +153,9 @@ def env_var_cron_batch_extended(
     Raises ValueError if the value is not a valid 6-field cron expression, has an offset
     on any field, or if required is True and the variable is not set.
     """
-    value = os.environ.get(name)
+    raw = os.environ.get(name)
+    value = CRON_BATCH_EXTENDED_SHORTCUTS.get(raw, raw)
+    default = CRON_BATCH_EXTENDED_SHORTCUTS.get(default, default)
     if not value:
         if default is not None:
             value = default
