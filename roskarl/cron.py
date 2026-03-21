@@ -115,8 +115,8 @@ def env_var_cron_batch(
     field, or if required is True and the variable is not set.
     """
     raw = os.environ.get(name)
-    value = CRON_BATCH_SHORTCUTS.get(raw, raw)
-    default = CRON_BATCH_SHORTCUTS.get(default, default)
+    value = CRON_BATCH_SHORTCUTS.get(raw.lower() if raw else raw, raw)
+    default = CRON_BATCH_SHORTCUTS.get(default.lower() if default else default, default)
     if value is None:
         if default is not None:
             if has_offset(default):
@@ -154,8 +154,10 @@ def env_var_cron_batch_extended(
     on any field, or if required is True and the variable is not set.
     """
     raw = os.environ.get(name)
-    value = CRON_BATCH_EXTENDED_SHORTCUTS.get(raw, raw)
-    default = CRON_BATCH_EXTENDED_SHORTCUTS.get(default, default)
+    value = CRON_BATCH_EXTENDED_SHORTCUTS.get(raw.lower() if raw else raw, raw)
+    default = CRON_BATCH_EXTENDED_SHORTCUTS.get(
+        default.lower() if default else default, default
+    )
     if not value:
         if default is not None:
             value = default
