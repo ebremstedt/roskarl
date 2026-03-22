@@ -26,7 +26,7 @@ def has_offset(expr: str) -> bool:
     )
 
 
-CronBatch = Annotated[str, "5-field cron expression with no offset fields"]
+BatchExpression = Annotated[str, "5-field cron expression with no offset fields"]
 """
 A subset of 5-field cron expressions that only allows interval-based scheduling with no offset.
 Valid fields are limited to '*', '0', or '*/N', ensuring the schedule aligns to zero (e.g. '0 */2 * * *').
@@ -39,7 +39,7 @@ Valid:   '* * * * *', '0 * * * *', '0 */2 * * *', '0 */6 */2 * *', '0 0 1 * *'
 Invalid: '0 2 * * *', '0 2/2 * * *', '5 * * * *', '0 */2 2 * *'
 """
 
-CRON_BATCH_SHORTCUTS: dict[str, CronBatch] = {
+BATCH_EXPRESSION_SHORTCUTS: dict[str, BatchExpression] = {
     "@minutely": "* * * * *",
     "@hourly": "0 * * * *",
     "@daily": "0 0 * * *",
@@ -47,10 +47,12 @@ CRON_BATCH_SHORTCUTS: dict[str, CronBatch] = {
     "@monthly": "0 0 1 * *",
 }
 
-CronBatchExtended = Annotated[str, "6-field cron expression with no offset fields"]
+BatchExpressionExtended = Annotated[
+    str, "6-field cron expression with no offset fields"
+]
 """
 A subset of 6-field cron expressions (second minute hour day month weekday) that only
-allows interval-based scheduling with no offset. Extends CronBatch with a seconds field,
+allows interval-based scheduling with no offset. Extends BatchExpression with a seconds field,
 enabling sub-minute granularity.
 
 The day-of-month field additionally allows '1'. Since cron days are 1-indexed (there is no day 0),
@@ -60,7 +62,7 @@ Valid:   '* * * * * *', '0 * * * * *', '0 0 * * * *', '0 0 0 * * 0', '0 0 0 1 * 
 Invalid: '5 * * * * *', '0 2 * * * *'
 """
 
-CRON_BATCH_EXTENDED_SHORTCUTS: dict[str, CronBatchExtended] = {
+BATCH_EXPRESSION_EXTENDED_SHORTCUTS: dict[str, BatchExpressionExtended] = {
     "@secondly": "* * * * * *",
     "@minutely": "0 * * * * *",
     "@hourly": "0 0 * * * *",
@@ -98,25 +100,27 @@ def env_var_cron(
     return value
 
 
-def env_var_cron_batch(
+def env_var_batch_expression(
     name: str,
-    default: CronBatch | None = None,
+    default: BatchExpression | None = None,
     should_print_unset: bool = True,
     required: bool = False,
-) -> CronBatch | None:
+) -> BatchExpression | None:
     """
-    Reads a CronBatch expression from an environment variable.
+    Reads a BatchExpression expression from an environment variable.
 
     Same as env_var_cron but additionally enforces no offset on any field,
     making it suitable for expressing batch frequency rather than a specific point in time.
-    Accepts shortcut aliases from CRON_BATCH_SHORTCUTS (e.g. '@monthly').
+    Accepts shortcut aliases from BATCH_EXPRESSION_SHORTCUTS (e.g. '@monthly').
 
     Raises ValueError if the value is not a valid cron expression, has an offset on any
     field, or if required is True and the variable is not set.
     """
     raw = os.environ.get(name)
-    value = CRON_BATCH_SHORTCUTS.get(raw.lower() if raw else raw, raw)
-    default = CRON_BATCH_SHORTCUTS.get(default.lower() if default else default, default)
+    value = BATCH_EXPRESSION_SHORTCUTS.get(raw.lower() if raw else raw, raw)
+    default = BATCH_EXPRESSION_SHORTCUTS.get(
+        default.lower() if default else default, default
+    )
     if value is None:
         if default is not None:
             if has_offset(default):
@@ -138,24 +142,24 @@ def env_var_cron_batch(
     return value
 
 
-def env_var_cron_batch_extended(
+def env_var_batch_expression_extended(
     name: str,
-    default: CronBatchExtended | None = None,
+    default: BatchExpressionExtended | None = None,
     should_print_unset: bool = True,
     required: bool = False,
-) -> CronBatchExtended | None:
+) -> BatchExpressionExtended | None:
     """
-    Reads a CronBatchExtended expression from an environment variable.
+    Reads a BatchExpressionExtended expression from an environment variable.
 
-    Same as env_var_cron_batch but expects a 6-field expression
+    Same as env_var_batch_expression but expects a 6-field expression
     (second minute hour day month weekday), enabling sub-minute granularity.
 
     Raises ValueError if the value is not a valid 6-field cron expression, has an offset
     on any field, or if required is True and the variable is not set.
     """
     raw = os.environ.get(name)
-    value = CRON_BATCH_EXTENDED_SHORTCUTS.get(raw.lower() if raw else raw, raw)
-    default = CRON_BATCH_EXTENDED_SHORTCUTS.get(
+    value = BATCH_EXPRESSION_EXTENDED_SHORTCUTS.get(raw.lower() if raw else raw, raw)
+    default = BATCH_EXPRESSION_EXTENDED_SHORTCUTS.get(
         default.lower() if default else default, default
     )
     if not value:

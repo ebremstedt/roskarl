@@ -1,4 +1,6 @@
-# How to
+[← README](README.md)
+
+# How to release
 
 1. Update your files
 2. Bump version in pyproject.toml

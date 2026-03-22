@@ -6,7 +6,7 @@
 
 Accepts any valid 5-field cron expression.
 
-## `env_var_cron_batch`
+## `env_var_batch_expression`
 
 Rejects expressions with offsets — intended for expressing **batch frequency** rather than a specific point in time. Valid fields per position: `*`, `0`, or `*/N`.
 
@@ -30,10 +30,10 @@ Aliases can be passed directly as the env var value or as the `default` argument
 | `@monthly`   | `0 0 1 * *`   |
 
 ```python
-from roskarl.cron import CRON_BATCH_SHORTCUTS
+from roskarl.cron import BATCH_EXPRESSION_SHORTCUTS
 ```
 
-## `env_var_cron_batch_extended`
+## `env_var_batch_expression_extended`
 
 Same as `env_var_cron_batch` but expects a **6-field** expression (`second minute hour day month weekday`), enabling sub-minute granularity.
 
@@ -51,7 +51,7 @@ Aliases can be passed directly as the env var value or as the `default` argument
 | `@monthly`   | `0 0 0 1 * *`   |
 
 ```python
-from roskarl.cron import CRON_BATCH_EXTENDED_SHORTCUTS
+from roskarl.cron import BATCH_EXPRESSION_EXTENDED_SHORTCUTS
 ```
 
 ## Note on monthly
