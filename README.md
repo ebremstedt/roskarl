@@ -120,6 +120,12 @@ The `DSN` object exposes the following attributes:
 
 ---
 
+## Testing
+Tests use `pytest`. Run the full suite:
+```sh
+pytest tests/
+```
+
 ## Release
 
 See [RELEASE.md](RELEASE.md) for instructions on how to publish a new version.
