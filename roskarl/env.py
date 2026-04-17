@@ -274,6 +274,23 @@ class DSN:
             f"TrustServerCertificate={yes_no(trust_server_certificate)}"
         )
 
+    def build_db2_string(self, ssl_cert_path: str | None = None) -> str:
+        if self.port is None:
+            raise ValueError("port is required for DB2 connection string")
+        if self.database is None:
+            raise ValueError("database is required for DB2 connection string")
+        base = (
+            f"DATABASE={self.database};"
+            f"HOSTNAME={self.hostname};"
+            f"PORT={self.port};"
+            f"PROTOCOL=TCPIP;"
+            f"UID={self.username};"
+            f"PWD={self.password};"
+        )
+        if ssl_cert_path:
+            base += f"Security=SSL;SSLServerCertificate={ssl_cert_path};"
+        return base
+
     def __post_init__(self) -> None:
         self.connection_string = self._build_connection_string()
         self.libpq_string = self._build_libpq_string()
@@ -351,3 +368,4 @@ def env_var_dsn(name: str, default: DSN | None = None) -> DSN:
         raise
     except Exception as e:
         raise ValueError(f"Failed to parse DSN string: Unexpected error - {str(e)}")
+
