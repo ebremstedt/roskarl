@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, Literal, overload
 import os
 from roskarl.notify import print_unset
 from icron import croniter
@@ -72,6 +72,21 @@ BATCH_EXPRESSION_EXTENDED_SHORTCUTS: dict[str, BatchExpressionExtended] = {
 }
 
 
+@overload
+def env_var_cron(
+    name: str,
+    default: str | None = ...,
+    should_print_unset: bool = ...,
+    *,
+    required: Literal[True],
+) -> str: ...
+@overload
+def env_var_cron(
+    name: str,
+    default: str | None = ...,
+    should_print_unset: bool = ...,
+    required: bool = ...,
+) -> str | None: ...
 def env_var_cron(
     name: str,
     default: str | None = None,
@@ -100,6 +115,21 @@ def env_var_cron(
     return value
 
 
+@overload
+def env_var_batch_expression(
+    name: str,
+    default: BatchExpression | None = ...,
+    should_print_unset: bool = ...,
+    *,
+    required: Literal[True],
+) -> BatchExpression: ...
+@overload
+def env_var_batch_expression(
+    name: str,
+    default: BatchExpression | None = ...,
+    should_print_unset: bool = ...,
+    required: bool = ...,
+) -> BatchExpression | None: ...
 def env_var_batch_expression(
     name: str,
     default: BatchExpression | None = None,
@@ -142,6 +172,21 @@ def env_var_batch_expression(
     return value
 
 
+@overload
+def env_var_batch_expression_extended(
+    name: str,
+    default: BatchExpressionExtended | None = ...,
+    should_print_unset: bool = ...,
+    *,
+    required: Literal[True],
+) -> BatchExpressionExtended: ...
+@overload
+def env_var_batch_expression_extended(
+    name: str,
+    default: BatchExpressionExtended | None = ...,
+    should_print_unset: bool = ...,
+    required: bool = ...,
+) -> BatchExpressionExtended | None: ...
 def env_var_batch_expression_extended(
     name: str,
     default: BatchExpressionExtended | None = None,

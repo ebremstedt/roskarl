@@ -1,11 +1,30 @@
 import os
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
-from typing import Any
+from typing import Any, Literal, overload
 from dataclasses import dataclass, field
 import re
 from urllib.parse import unquote, quote
 from datetime import datetime
 from roskarl.notify import print_unset
+
+
+@overload
+def env_var(
+    name: str,
+    default: str | None = ...,
+    should_print_unset: bool = ...,
+    *,
+    required: Literal[True],
+) -> str: ...
+
+
+@overload
+def env_var(
+    name: str,
+    default: str | None = ...,
+    should_print_unset: bool = ...,
+    required: bool = ...,
+) -> str | None: ...
 
 
 def env_var(
@@ -24,6 +43,25 @@ def env_var(
             print_unset(name)
         return None
     return value
+
+
+@overload
+def env_var_tz(
+    name: str,
+    default: str | None = ...,
+    should_print_unset: bool = ...,
+    *,
+    required: Literal[True],
+) -> str: ...
+
+
+@overload
+def env_var_tz(
+    name: str,
+    default: str | None = ...,
+    should_print_unset: bool = ...,
+    required: bool = ...,
+) -> str | None: ...
 
 
 def env_var_tz(
@@ -48,6 +86,27 @@ def env_var_tz(
     return value
 
 
+@overload
+def env_var_list(
+    name: str,
+    separator: str = ...,
+    default: list[str] | None = ...,
+    should_print_unset: bool = ...,
+    *,
+    required: Literal[True],
+) -> list[str]: ...
+
+
+@overload
+def env_var_list(
+    name: str,
+    separator: str = ...,
+    default: list[str] | None = ...,
+    should_print_unset: bool = ...,
+    required: bool = ...,
+) -> list[str] | None: ...
+
+
 def env_var_list(
     name: str,
     separator: str = ",",
@@ -68,6 +127,25 @@ def env_var_list(
         return [item.strip() for item in value.split(separator)]
     except Exception as e:
         raise ValueError(f"Error parsing list from env var '{name}': {e}")
+
+
+@overload
+def env_var_bool(
+    name: str,
+    default: bool | None = ...,
+    should_print_unset: bool = ...,
+    *,
+    required: Literal[True],
+) -> bool: ...
+
+
+@overload
+def env_var_bool(
+    name: str,
+    default: bool | None = ...,
+    should_print_unset: bool = ...,
+    required: bool = ...,
+) -> bool | None: ...
 
 
 def env_var_bool(
@@ -94,6 +172,25 @@ def env_var_bool(
     )
 
 
+@overload
+def env_var_int(
+    name: str,
+    default: int | None = ...,
+    should_print_unset: bool = ...,
+    *,
+    required: Literal[True],
+) -> int: ...
+
+
+@overload
+def env_var_int(
+    name: str,
+    default: int | None = ...,
+    should_print_unset: bool = ...,
+    required: bool = ...,
+) -> int | None: ...
+
+
 def env_var_int(
     name: str,
     default: int | None = None,
@@ -115,6 +212,25 @@ def env_var_int(
         raise
 
 
+@overload
+def env_var_float(
+    name: str,
+    default: float | None = ...,
+    should_print_unset: bool = ...,
+    *,
+    required: Literal[True],
+) -> float: ...
+
+
+@overload
+def env_var_float(
+    name: str,
+    default: float | None = ...,
+    should_print_unset: bool = ...,
+    required: bool = ...,
+) -> float | None: ...
+
+
 def env_var_float(
     name: str,
     default: float | None = None,
@@ -134,6 +250,25 @@ def env_var_float(
         return float(value)
     except ValueError:
         raise
+
+
+@overload
+def env_var_iso8601_datetime(
+    name: str,
+    default: datetime | None = ...,
+    should_print_unset: bool = ...,
+    *,
+    required: Literal[True],
+) -> datetime: ...
+
+
+@overload
+def env_var_iso8601_datetime(
+    name: str,
+    default: datetime | None = ...,
+    should_print_unset: bool = ...,
+    required: bool = ...,
+) -> datetime | None: ...
 
 
 def env_var_iso8601_datetime(
@@ -158,6 +293,25 @@ def env_var_iso8601_datetime(
             f"'{name}' is not a valid ISO8601 datetime string: '{value}'. "
             "Expected format: 2026-01-01T00:00:00 or 2026-01-01T00:00:00+00:00"
         )
+
+
+@overload
+def env_var_rfc3339_datetime(
+    name: str,
+    default: datetime | None = ...,
+    should_print_unset: bool = ...,
+    *,
+    required: Literal[True],
+) -> datetime: ...
+
+
+@overload
+def env_var_rfc3339_datetime(
+    name: str,
+    default: datetime | None = ...,
+    should_print_unset: bool = ...,
+    required: bool = ...,
+) -> datetime | None: ...
 
 
 def env_var_rfc3339_datetime(
