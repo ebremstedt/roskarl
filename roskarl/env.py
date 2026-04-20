@@ -522,4 +522,3 @@ def env_var_dsn(name: str, default: DSN | None = None) -> DSN:
         raise
     except Exception as e:
         raise ValueError(f"Failed to parse DSN string: Unexpected error - {str(e)}")
-
