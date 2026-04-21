@@ -12,10 +12,10 @@ from roskarl.env import (
 )
 from roskarl.cron import (
     env_var_cron,
-    env_var_batch_expression,
-    env_var_batch_expression_extended,
-    BatchExpression,
-    BatchExpressionExtended,
+    env_var_interval_expression,
+    env_var_interval_expression_extended,
+    IntervalExpression,
+    IntervalExpressionExtended,
 )
 
 __all__ = [
@@ -31,8 +31,8 @@ __all__ = [
     "env_var_iso8601_datetime",
     "DSN",
     "env_var_cron",
-    "env_var_batch_expression",
-    "env_var_batch_expression_extended",
-    "BatchExpression",
-    "BatchExpressionExtended",
+    "env_var_interval_expression",
+    "env_var_interval_expression_extended",
+    "IntervalExpression",
+    "IntervalExpressionExtended",
 ]

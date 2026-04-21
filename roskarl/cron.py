@@ -26,11 +26,11 @@ def has_offset(expr: str) -> bool:
     )
 
 
-BatchExpression = Annotated[str, "5-field cron expression with no offset fields"]
+IntervalExpression = Annotated[str, "5-field cron expression with no offset fields"]
 """
 A subset of 5-field cron expressions that only allows interval-based scheduling with no offset.
 Valid fields are limited to '*', '0', or '*/N', ensuring the schedule aligns to zero (e.g. '0 */2 * * *').
-Intended to express batch frequency, not a specific point in time.
+Intended to express interval frequency, not a specific point in time.
 
 The day-of-month field additionally allows '1'. Since cron days are 1-indexed (there is no day 0),
 '1' is the natural interval boundary — equivalent to '0' in hour/minute — and is what enables '@monthly'.
@@ -39,20 +39,25 @@ Valid:   '* * * * *', '0 * * * *', '0 */2 * * *', '0 */6 */2 * *', '0 0 1 * *'
 Invalid: '0 2 * * *', '0 2/2 * * *', '5 * * * *', '0 */2 2 * *'
 """
 
-BATCH_EXPRESSION_SHORTCUTS: dict[str, BatchExpression] = {
+INTERVAL_EXPRESSION_SHORTCUTS: dict[str, IntervalExpression] = {
     "@minutely": "* * * * *",
+    "@minute": "* * * * *",
     "@hourly": "0 * * * *",
+    "@hour": "0 * * * *",
     "@daily": "0 0 * * *",
+    "@day": "0 0 * * *",
     "@weekly": "0 0 * * 0",
+    "@week": "0 0 * * 0",
     "@monthly": "0 0 1 * *",
+    "@month": "0 0 1 * *",
 }
 
-BatchExpressionExtended = Annotated[
+IntervalExpressionExtended = Annotated[
     str, "6-field cron expression with no offset fields"
 ]
 """
 A subset of 6-field cron expressions (second minute hour day month weekday) that only
-allows interval-based scheduling with no offset. Extends BatchExpression with a seconds field,
+allows interval-based scheduling with no offset. Extends IntervalExpression with a seconds field,
 enabling sub-minute granularity.
 
 The day-of-month field additionally allows '1'. Since cron days are 1-indexed (there is no day 0),
@@ -62,13 +67,19 @@ Valid:   '* * * * * *', '0 * * * * *', '0 0 * * * *', '0 0 0 * * 0', '0 0 0 1 * 
 Invalid: '5 * * * * *', '0 2 * * * *'
 """
 
-BATCH_EXPRESSION_EXTENDED_SHORTCUTS: dict[str, BatchExpressionExtended] = {
+INTERVAL_EXPRESSION_EXTENDED_SHORTCUTS: dict[str, IntervalExpressionExtended] = {
     "@secondly": "* * * * * *",
+    "@second": "* * * * * *",
     "@minutely": "0 * * * * *",
+    "@minute": "0 * * * * *",
     "@hourly": "0 0 * * * *",
+    "@hour": "0 0 * * * *",
     "@daily": "0 0 0 * * *",
+    "@day": "0 0 0 * * *",
     "@weekly": "0 0 0 * * 0",
+    "@week": "0 0 0 * * 0",
     "@monthly": "0 0 0 1 * *",
+    "@month": "0 0 0 1 * *",
 }
 
 
@@ -80,6 +91,8 @@ def env_var_cron(
     *,
     required: Literal[True],
 ) -> str: ...
+
+
 @overload
 def env_var_cron(
     name: str,
@@ -87,6 +100,8 @@ def env_var_cron(
     should_print_unset: bool = ...,
     required: bool = ...,
 ) -> str | None: ...
+
+
 def env_var_cron(
     name: str,
     default: str | None = None,
@@ -116,41 +131,44 @@ def env_var_cron(
 
 
 @overload
-def env_var_batch_expression(
+def env_var_interval_expression(
     name: str,
-    default: BatchExpression | None = ...,
+    default: IntervalExpression | None = ...,
     should_print_unset: bool = ...,
     *,
     required: Literal[True],
-) -> BatchExpression: ...
+) -> IntervalExpression: ...
+
+
 @overload
-def env_var_batch_expression(
+def env_var_interval_expression(
     name: str,
-    default: BatchExpression | None = ...,
+    default: IntervalExpression | None = ...,
     should_print_unset: bool = ...,
     required: bool = ...,
-) -> BatchExpression | None: ...
-def env_var_batch_expression(
+) -> IntervalExpression | None: ...
+
+
+def env_var_interval_expression(
     name: str,
-    default: BatchExpression | None = None,
+    default: IntervalExpression | None = None,
     should_print_unset: bool = True,
     required: bool = False,
-) -> BatchExpression | None:
+) -> IntervalExpression | None:
     """
-    Reads a BatchExpression expression from an environment variable.
+    Reads an IntervalExpression from an environment variable.
 
     Same as env_var_cron but additionally enforces no offset on any field,
-    making it suitable for expressing batch frequency rather than a specific point in time.
-    Accepts shortcut aliases from BATCH_EXPRESSION_SHORTCUTS (e.g. '@monthly').
+    making it suitable for expressing interval frequency rather than a specific point in time.
+    Accepts shortcut aliases from INTERVAL_EXPRESSION_SHORTCUTS (e.g. '@monthly').
 
     Raises ValueError if the value is not a valid cron expression, has an offset on any
     field, or if required is True and the variable is not set.
     """
     raw = os.environ.get(name)
-    value = BATCH_EXPRESSION_SHORTCUTS.get(raw.lower() if raw else raw, raw)
-    default = BATCH_EXPRESSION_SHORTCUTS.get(
-        default.lower() if default else default, default
-    )
+    value = INTERVAL_EXPRESSION_SHORTCUTS.get(raw.lower(), raw) if raw else None
+    if default is not None:
+        default = INTERVAL_EXPRESSION_SHORTCUTS.get(default.lower(), default)
     if value is None:
         if default is not None:
             if has_offset(default):
@@ -173,40 +191,45 @@ def env_var_batch_expression(
 
 
 @overload
-def env_var_batch_expression_extended(
+def env_var_interval_expression_extended(
     name: str,
-    default: BatchExpressionExtended | None = ...,
+    default: IntervalExpressionExtended | None = ...,
     should_print_unset: bool = ...,
     *,
     required: Literal[True],
-) -> BatchExpressionExtended: ...
+) -> IntervalExpressionExtended: ...
+
+
 @overload
-def env_var_batch_expression_extended(
+def env_var_interval_expression_extended(
     name: str,
-    default: BatchExpressionExtended | None = ...,
+    default: IntervalExpressionExtended | None = ...,
     should_print_unset: bool = ...,
     required: bool = ...,
-) -> BatchExpressionExtended | None: ...
-def env_var_batch_expression_extended(
+) -> IntervalExpressionExtended | None: ...
+
+
+def env_var_interval_expression_extended(
     name: str,
-    default: BatchExpressionExtended | None = None,
+    default: IntervalExpressionExtended | None = None,
     should_print_unset: bool = True,
     required: bool = False,
-) -> BatchExpressionExtended | None:
+) -> IntervalExpressionExtended | None:
     """
-    Reads a BatchExpressionExtended expression from an environment variable.
+    Reads an IntervalExpressionExtended from an environment variable.
 
-    Same as env_var_batch_expression but expects a 6-field expression
+    Same as env_var_interval_expression but expects a 6-field expression
     (second minute hour day month weekday), enabling sub-minute granularity.
 
     Raises ValueError if the value is not a valid 6-field cron expression, has an offset
     on any field, or if required is True and the variable is not set.
     """
     raw = os.environ.get(name)
-    value = BATCH_EXPRESSION_EXTENDED_SHORTCUTS.get(raw.lower() if raw else raw, raw)
-    default = BATCH_EXPRESSION_EXTENDED_SHORTCUTS.get(
-        default.lower() if default else default, default
+    value = (
+        INTERVAL_EXPRESSION_EXTENDED_SHORTCUTS.get(raw.lower(), raw) if raw else None
     )
+    if default is not None:
+        default = INTERVAL_EXPRESSION_EXTENDED_SHORTCUTS.get(default.lower(), default)
     if not value:
         if default is not None:
             value = default

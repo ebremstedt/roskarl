@@ -3,10 +3,10 @@ from unittest.mock import patch
 from roskarl.cron import (
     has_offset,
     env_var_cron,
-    env_var_batch_expression,
-    env_var_batch_expression_extended,
-    BATCH_EXPRESSION_SHORTCUTS,
-    BATCH_EXPRESSION_EXTENDED_SHORTCUTS,
+    env_var_interval_expression,
+    env_var_interval_expression_extended,
+    INTERVAL_EXPRESSION_SHORTCUTS,
+    INTERVAL_EXPRESSION_EXTENDED_SHORTCUTS,
 )
 
 
@@ -72,25 +72,25 @@ class TestEnvVarCron:
             assert env_var_cron("MY_CRON", should_print_unset=False) is None
 
 
-class TestEnvVarBatchExpression:
+class TestEnvVarIntervalExpression:
     def test_valid_no_offset(self):
         with patch.dict("os.environ", {"MY_CRON": "0 */2 * * *"}):
-            assert env_var_batch_expression("MY_CRON") == "0 */2 * * *"
+            assert env_var_interval_expression("MY_CRON") == "0 */2 * * *"
 
     def test_raises_on_offset(self):
         with patch.dict("os.environ", {"MY_CRON": "0 2 * * *"}):
             with pytest.raises(ValueError, match="has a cron offset"):
-                env_var_batch_expression("MY_CRON")
+                env_var_interval_expression("MY_CRON")
 
     def test_raises_on_offset_step(self):
         with patch.dict("os.environ", {"MY_CRON": "0 2/2 * * *"}):
             with pytest.raises(ValueError, match="has a cron offset"):
-                env_var_batch_expression("MY_CRON")
+                env_var_interval_expression("MY_CRON")
 
     def test_valid_default(self):
         with patch.dict("os.environ", {}, clear=True):
             assert (
-                env_var_batch_expression(
+                env_var_interval_expression(
                     "MY_CRON", default="0 */6 * * *", should_print_unset=False
                 )
                 == "0 */6 * * *"
@@ -99,58 +99,60 @@ class TestEnvVarBatchExpression:
     def test_invalid_default_offset(self):
         with patch.dict("os.environ", {}, clear=True):
             with pytest.raises(ValueError, match="has a cron offset"):
-                env_var_batch_expression(
+                env_var_interval_expression(
                     "MY_CRON", default="0 2 * * *", should_print_unset=False
                 )
 
     def test_required_raises_when_unset(self):
         with patch.dict("os.environ", {}, clear=True):
             with pytest.raises(ValueError, match="is not set"):
-                env_var_batch_expression("MY_CRON", required=True)
+                env_var_interval_expression("MY_CRON", required=True)
 
     def test_returns_none_when_unset(self):
         with patch.dict("os.environ", {}, clear=True):
-            assert env_var_batch_expression("MY_CRON", should_print_unset=False) is None
+            assert (
+                env_var_interval_expression("MY_CRON", should_print_unset=False) is None
+            )
 
     def test_monthly(self):
         with patch.dict("os.environ", {"MY_CRON": "0 0 1 * *"}):
-            assert env_var_batch_expression("MY_CRON") == "0 0 1 * *"
+            assert env_var_interval_expression("MY_CRON") == "0 0 1 * *"
 
-    @pytest.mark.parametrize("alias,expression", BATCH_EXPRESSION_SHORTCUTS.items())
+    @pytest.mark.parametrize("alias,expression", INTERVAL_EXPRESSION_SHORTCUTS.items())
     def test_shortcut_from_env(self, alias, expression):
         with patch.dict("os.environ", {"MY_CRON": alias}):
-            assert env_var_batch_expression("MY_CRON") == expression
+            assert env_var_interval_expression("MY_CRON") == expression
 
-    @pytest.mark.parametrize("alias,expression", BATCH_EXPRESSION_SHORTCUTS.items())
+    @pytest.mark.parametrize("alias,expression", INTERVAL_EXPRESSION_SHORTCUTS.items())
     def test_shortcut_as_default(self, alias, expression):
         with patch.dict("os.environ", {}, clear=True):
             assert (
-                env_var_batch_expression(
+                env_var_interval_expression(
                     "MY_CRON", default=alias, should_print_unset=False
                 )
                 == expression
             )
 
 
-class TestEnvVarBatchExpressionExtended:
+class TestEnvVarIntervalExpressionExtended:
     def test_valid_6_field_no_offset(self):
         with patch.dict("os.environ", {"MY_CRON": "0 */2 * * * *"}):
-            assert env_var_batch_expression_extended("MY_CRON") == "0 */2 * * * *"
+            assert env_var_interval_expression_extended("MY_CRON") == "0 */2 * * * *"
 
     def test_raises_on_5_field(self):
         with patch.dict("os.environ", {"MY_CRON": "0 * * * *"}):
             with pytest.raises(ValueError, match="6-field"):
-                env_var_batch_expression_extended("MY_CRON")
+                env_var_interval_expression_extended("MY_CRON")
 
     def test_raises_on_offset(self):
         with patch.dict("os.environ", {"MY_CRON": "5 * * * * *"}):
             with pytest.raises(ValueError, match="has a cron offset"):
-                env_var_batch_expression_extended("MY_CRON")
+                env_var_interval_expression_extended("MY_CRON")
 
     def test_valid_default(self):
         with patch.dict("os.environ", {}, clear=True):
             assert (
-                env_var_batch_expression_extended(
+                env_var_interval_expression_extended(
                     "MY_CRON", default="0 0 * * * *", should_print_unset=False
                 )
                 == "0 0 * * * *"
@@ -159,45 +161,47 @@ class TestEnvVarBatchExpressionExtended:
     def test_required_raises_when_unset(self):
         with patch.dict("os.environ", {}, clear=True):
             with pytest.raises(ValueError, match="is not set"):
-                env_var_batch_expression_extended("MY_CRON", required=True)
+                env_var_interval_expression_extended("MY_CRON", required=True)
 
     def test_returns_none_when_unset(self):
         with patch.dict("os.environ", {}, clear=True):
             assert (
-                env_var_batch_expression_extended("MY_CRON", should_print_unset=False)
+                env_var_interval_expression_extended(
+                    "MY_CRON", should_print_unset=False
+                )
                 is None
             )
 
     def test_secondly(self):
         with patch.dict("os.environ", {"MY_CRON": "* * * * * *"}):
-            assert env_var_batch_expression_extended("MY_CRON") == "* * * * * *"
+            assert env_var_interval_expression_extended("MY_CRON") == "* * * * * *"
 
     def test_every_minute_extended(self):
         with patch.dict("os.environ", {"MY_CRON": "0 * * * * *"}):
-            assert env_var_batch_expression_extended("MY_CRON") == "0 * * * * *"
+            assert env_var_interval_expression_extended("MY_CRON") == "0 * * * * *"
 
     def test_weekly_extended(self):
         with patch.dict("os.environ", {"MY_CRON": "0 0 0 * * 0"}):
-            assert env_var_batch_expression_extended("MY_CRON") == "0 0 0 * * 0"
+            assert env_var_interval_expression_extended("MY_CRON") == "0 0 0 * * 0"
 
     def test_monthly_extended(self):
         with patch.dict("os.environ", {"MY_CRON": "0 0 0 1 * *"}):
-            assert env_var_batch_expression_extended("MY_CRON") == "0 0 0 1 * *"
+            assert env_var_interval_expression_extended("MY_CRON") == "0 0 0 1 * *"
 
     @pytest.mark.parametrize(
-        "alias,expression", BATCH_EXPRESSION_EXTENDED_SHORTCUTS.items()
+        "alias,expression", INTERVAL_EXPRESSION_EXTENDED_SHORTCUTS.items()
     )
     def test_shortcut_from_env(self, alias, expression):
         with patch.dict("os.environ", {"MY_CRON": alias}):
-            assert env_var_batch_expression_extended("MY_CRON") == expression
+            assert env_var_interval_expression_extended("MY_CRON") == expression
 
     @pytest.mark.parametrize(
-        "alias,expression", BATCH_EXPRESSION_EXTENDED_SHORTCUTS.items()
+        "alias,expression", INTERVAL_EXPRESSION_EXTENDED_SHORTCUTS.items()
     )
     def test_shortcut_as_default(self, alias, expression):
         with patch.dict("os.environ", {}, clear=True):
             assert (
-                env_var_batch_expression_extended(
+                env_var_interval_expression_extended(
                     "MY_CRON", default=alias, should_print_unset=False
                 )
                 == expression

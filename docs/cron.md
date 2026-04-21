@@ -6,9 +6,9 @@
 
 Accepts any valid 5-field cron expression.
 
-## `env_var_batch_expression`
+## `env_var_interval_expression`
 
-Rejects expressions with offsets — intended for expressing **batch frequency** rather than a specific point in time. Valid fields per position: `*`, `0`, or `*/N`.
+Rejects expressions with offsets — intended for expressing **interval frequency** rather than a specific point in time. Valid fields per position: `*`, `0`, or `*/N`.
 
 | Expression    | Valid | Reason                       |
 |---------------|-------|------------------------------|
@@ -21,37 +21,37 @@ Rejects expressions with offsets — intended for expressing **batch frequency**
 
 Aliases can be passed directly as the env var value or as the `default` argument — they are resolved before validation.
 
-| Alias        | Expression    |
-|--------------|---------------|
-| `@minutely`  | `* * * * *`   |
-| `@hourly`    | `0 * * * *`   |
-| `@daily`     | `0 0 * * *`   |
-| `@weekly`    | `0 0 * * 0`   |
-| `@monthly`   | `0 0 1 * *`   |
+| Alias                     | Expression    |
+|---------------------------|---------------|
+| `@minutely` / `@minute`   | `* * * * *`   |
+| `@hourly` / `@hour`       | `0 * * * *`   |
+| `@daily` / `@day`         | `0 0 * * *`   |
+| `@weekly` / `@week`       | `0 0 * * 0`   |
+| `@monthly` / `@month`     | `0 0 1 * *`   |
 
 ```python
-from roskarl.cron import BATCH_EXPRESSION_SHORTCUTS
+from roskarl.cron import INTERVAL_EXPRESSION_SHORTCUTS
 ```
 
-## `env_var_batch_expression_extended`
+## `env_var_interval_expression_extended`
 
-Same as `env_var_cron_batch` but expects a **6-field** expression (`second minute hour day month weekday`), enabling sub-minute granularity.
+Same as `env_var_interval_expression` but expects a **6-field** expression (`second minute hour day month weekday`), enabling sub-minute granularity.
 
 ### Shortcuts
 
 Aliases can be passed directly as the env var value or as the `default` argument — they are resolved before validation.
 
-| Alias        | Expression      |
-|--------------|-----------------|
-| `@secondly`  | `* * * * * *`   |
-| `@minutely`  | `0 * * * * *`   |
-| `@hourly`    | `0 0 * * * *`   |
-| `@daily`     | `0 0 0 * * *`   |
-| `@weekly`    | `0 0 0 * * 0`   |
-| `@monthly`   | `0 0 0 1 * *`   |
+| Alias                     | Expression      |
+|---------------------------|-----------------|
+| `@secondly` / `@second`   | `* * * * * *`   |
+| `@minutely` / `@minute`   | `0 * * * * *`   |
+| `@hourly` / `@hour`       | `0 0 * * * *`   |
+| `@daily` / `@day`         | `0 0 0 * * *`   |
+| `@weekly` / `@week`       | `0 0 0 * * 0`   |
+| `@monthly` / `@month`     | `0 0 0 1 * *`   |
 
 ```python
-from roskarl.cron import BATCH_EXPRESSION_EXTENDED_SHORTCUTS
+from roskarl.cron import INTERVAL_EXPRESSION_EXTENDED_SHORTCUTS
 ```
 
 ## Note on monthly

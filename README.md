@@ -21,8 +21,8 @@ from roskarl import (
     env_var,
     env_var_bool,
     env_var_cron,
-    env_var_batch_expression,
-    env_var_batch_expression_extended,
+    env_var_interval_expression,
+    env_var_interval_expression_extended,
     env_var_float,
     env_var_int,
     env_var_iso8601_datetime,
@@ -72,14 +72,14 @@ value = env_var_float(name="FLOAT_VAR")
 value = env_var_cron(name="CRON_VAR")
 ```
 
-### batch expression (returns **`str`** if value is a valid offset-free 5-field cron expression)
+### interval expression (returns **`str`** if value is a valid offset-free 5-field cron expression)
 ```python
-value = env_var_batch_expression(name="BATCH_VAR")
+value = env_var_interval_expression(name="INTERVAL_VAR")
 ```
 
-### batch expression extended (returns **`str`** if value is a valid offset-free 6-field cron expression)
+### interval expression extended (returns **`str`** if value is a valid offset-free 6-field cron expression)
 ```python
-value = env_var_batch_expression_extended(name="BATCH_EXTENDED_VAR")
+value = env_var_interval_expression_extended(name="INTERVAL_EXTENDED_VAR")
 ```
 
 ### datetime (ISO8601) (returns **`datetime`** if value is a valid ISO8601 datetime string — timezone is optional)
