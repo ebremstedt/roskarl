@@ -71,6 +71,11 @@ class TestEnvVarCron:
         with patch.dict("os.environ", {}, clear=True):
             assert env_var_cron("MY_CRON", should_print_unset=False) is None
 
+    def test_invalid_default_raises(self):
+        with patch.dict("os.environ", {}, clear=True):
+            with pytest.raises(ValueError, match="not a valid cron expression"):
+                env_var_cron("MY_CRON", default="not_a_cron")
+
 
 class TestEnvVarIntervalExpression:
     def test_valid_no_offset(self):
@@ -101,6 +106,13 @@ class TestEnvVarIntervalExpression:
             with pytest.raises(ValueError, match="has a cron offset"):
                 env_var_interval_expression(
                     "MY_CRON", default="0 2 * * *", should_print_unset=False
+                )
+
+    def test_invalid_default_cron(self):
+        with patch.dict("os.environ", {}, clear=True):
+            with pytest.raises(ValueError, match="not a valid cron expression"):
+                env_var_interval_expression(
+                    "MY_CRON", default="not_a_cron", should_print_unset=False
                 )
 
     def test_required_raises_when_unset(self):
@@ -157,6 +169,20 @@ class TestEnvVarIntervalExpressionExtended:
                 )
                 == "0 0 * * * *"
             )
+
+    def test_invalid_default_offset_raises(self):
+        with patch.dict("os.environ", {}, clear=True):
+            with pytest.raises(ValueError, match="has a cron offset"):
+                env_var_interval_expression_extended(
+                    "MY_CRON", default="0 0 2 * * *", should_print_unset=False
+                )
+
+    def test_invalid_default_field_count_raises(self):
+        with patch.dict("os.environ", {}, clear=True):
+            with pytest.raises(ValueError, match="6-field"):
+                env_var_interval_expression_extended(
+                    "MY_CRON", default="0 * * * *", should_print_unset=False
+                )
 
     def test_required_raises_when_unset(self):
         with patch.dict("os.environ", {}, clear=True):

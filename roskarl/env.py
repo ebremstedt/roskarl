@@ -1,11 +1,62 @@
+import logging
 import os
-from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
-from typing import Any, Literal, overload
-from dataclasses import dataclass, field
 import re
-from urllib.parse import unquote, quote
-from datetime import datetime
-from roskarl.notify import print_unset
+from dataclasses import dataclass, field
+from datetime import datetime, timedelta
+from enum import Enum
+from pathlib import Path
+from typing import Any, Callable, Literal, TypeVar, overload
+from urllib.parse import quote, unquote, urlparse
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
+
+T = TypeVar("T")
+EnumT = TypeVar("EnumT", bound=Enum)
+
+
+def print_unset(name: str) -> None:
+    print(f"{name} not set or set to None.")
+
+
+@overload
+def env_var_custom(
+    name: str,
+    parser: Callable[[str], T],
+    default: T | None = ...,
+    should_print_unset: bool = ...,
+    *,
+    required: Literal[True],
+) -> T: ...
+
+
+@overload
+def env_var_custom(
+    name: str,
+    parser: Callable[[str], T],
+    default: T | None = ...,
+    should_print_unset: bool = ...,
+    required: bool = ...,
+) -> T | None: ...
+
+
+def env_var_custom(
+    name: str,
+    parser: Callable[[str], T],
+    default: T | None = None,
+    should_print_unset: bool = True,
+    required: bool = False,
+) -> T | None:
+    """Reads an environment variable and parses it with a caller-supplied function."""
+    value = os.environ.get(name)
+    if value:
+        return parser(value)
+    if default is not None:
+        return default
+    if required:
+        raise ValueError(f"Environment variable '{name}' is not set")
+    if should_print_unset:
+        print_unset(name)
+    return None
 
 
 @overload
@@ -33,16 +84,7 @@ def env_var(
     should_print_unset: bool = True,
     required: bool = False,
 ) -> str | None:
-    value = os.environ.get(name)
-    if not value:
-        if default is not None:
-            return default
-        if required:
-            raise ValueError(f"Environment variable '{name}' is not set")
-        if should_print_unset:
-            print_unset(name)
-        return None
-    return value
+    return env_var_custom(name, str, default, should_print_unset, required)
 
 
 @overload
@@ -70,20 +112,17 @@ def env_var_tz(
     should_print_unset: bool = True,
     required: bool = False,
 ) -> str | None:
-    value = os.environ.get(name)
-    if not value:
-        if default is not None:
-            return default
-        if required:
-            raise ValueError(f"Environment variable '{name}' is not set")
-        if should_print_unset:
-            print_unset(name)
-        return None
-    try:
-        ZoneInfo(value)
-    except ZoneInfoNotFoundError as e:
-        raise ValueError(f"Timezone string was not valid. {e}")
-    return value
+    def parse(value: str) -> str:
+        try:
+            ZoneInfo(value)
+        except ZoneInfoNotFoundError as e:
+            raise ValueError(f"Timezone string was not valid. {e}")
+        return value
+
+    if default is not None:
+        default = parse(default)
+
+    return env_var_custom(name, parse, default, should_print_unset, required)
 
 
 @overload
@@ -114,19 +153,13 @@ def env_var_list(
     should_print_unset: bool = True,
     required: bool = False,
 ) -> list[str] | None:
-    value = os.environ.get(name)
-    if not value:
-        if default is not None:
-            return default
-        if required:
-            raise ValueError(f"Environment variable '{name}' is not set")
-        if should_print_unset:
-            print_unset(name)
-        return None
-    try:
-        return [item.strip() for item in value.split(separator)]
-    except Exception as e:
-        raise ValueError(f"Error parsing list from env var '{name}': {e}")
+    def parse(value: str) -> list[str]:
+        try:
+            return [item.strip() for item in value.split(separator)]
+        except Exception as e:
+            raise ValueError(f"Error parsing list from env var '{name}': {e}")
+
+    return env_var_custom(name, parse, default, should_print_unset, required)
 
 
 @overload
@@ -154,22 +187,16 @@ def env_var_bool(
     should_print_unset: bool = True,
     required: bool = False,
 ) -> bool | None:
-    value = os.environ.get(name)
-    if not value:
-        if default is not None:
-            return default
-        if required:
-            raise ValueError(f"Environment variable '{name}' is not set")
-        if should_print_unset:
-            print_unset(name)
-        return None
-    if value.upper() == "TRUE":
-        return True
-    if value.upper() == "FALSE":
-        return False
-    raise ValueError(
-        f"Bool must be set to true or false (case insensitive), not: '{value}'"
-    )
+    def parse(value: str) -> bool:
+        if value.upper() == "TRUE":
+            return True
+        if value.upper() == "FALSE":
+            return False
+        raise ValueError(
+            f"Bool must be set to true or false (case insensitive), not: '{value}'"
+        )
+
+    return env_var_custom(name, parse, default, should_print_unset, required)
 
 
 @overload
@@ -197,19 +224,7 @@ def env_var_int(
     should_print_unset: bool = True,
     required: bool = False,
 ) -> int | None:
-    value = os.environ.get(name)
-    if not value:
-        if default is not None:
-            return default
-        if required:
-            raise ValueError(f"Environment variable '{name}' is not set")
-        if should_print_unset:
-            print_unset(name)
-        return None
-    try:
-        return int(value)
-    except ValueError:
-        raise
+    return env_var_custom(name, int, default, should_print_unset, required)
 
 
 @overload
@@ -237,19 +252,7 @@ def env_var_float(
     should_print_unset: bool = True,
     required: bool = False,
 ) -> float | None:
-    value = os.environ.get(name)
-    if not value:
-        if default is not None:
-            return default
-        if required:
-            raise ValueError(f"Environment variable '{name}' is not set")
-        if should_print_unset:
-            print_unset(name)
-        return None
-    try:
-        return float(value)
-    except ValueError:
-        raise
+    return env_var_custom(name, float, default, should_print_unset, required)
 
 
 @overload
@@ -277,22 +280,16 @@ def env_var_iso8601_datetime(
     should_print_unset: bool = True,
     required: bool = False,
 ) -> datetime | None:
-    value = os.environ.get(name)
-    if not value:
-        if default is not None:
-            return default
-        if required:
-            raise ValueError(f"Environment variable '{name}' is not set")
-        if should_print_unset:
-            print_unset(name)
-        return None
-    try:
-        return datetime.fromisoformat(value)
-    except ValueError:
-        raise ValueError(
-            f"'{name}' is not a valid ISO8601 datetime string: '{value}'. "
-            "Expected format: 2026-01-01T00:00:00 or 2026-01-01T00:00:00+00:00"
-        )
+    def parse(value: str) -> datetime:
+        try:
+            return datetime.fromisoformat(value)
+        except ValueError:
+            raise ValueError(
+                f"'{name}' is not a valid ISO8601 datetime string: '{value}'. "
+                "Expected format: 2026-01-01T00:00:00 or 2026-01-01T00:00:00+00:00"
+            )
+
+    return env_var_custom(name, parse, default, should_print_unset, required)
 
 
 @overload
@@ -320,28 +317,336 @@ def env_var_rfc3339_datetime(
     should_print_unset: bool = True,
     required: bool = False,
 ) -> datetime | None:
-    value = os.environ.get(name)
-    if not value:
-        if default is not None:
-            return default
-        if required:
-            raise ValueError(f"Environment variable '{name}' is not set")
-        if should_print_unset:
-            print_unset(name)
-        return None
-    try:
-        dt = datetime.fromisoformat(value)
-    except ValueError:
-        raise ValueError(
-            f"'{name}' is not a valid RFC3339 datetime string: '{value}'. "
-            "Expected format: 2026-01-01T00:00:00+00:00"
-        )
-    if dt.tzinfo is None:
-        raise ValueError(
-            f"'{name}' is missing timezone info, RFC3339 requires it: '{value}'. "
-            "Expected format: 2026-01-01T00:00:00+00:00"
-        )
-    return dt
+    def parse(value: str) -> datetime:
+        try:
+            dt = datetime.fromisoformat(value)
+        except ValueError:
+            raise ValueError(
+                f"'{name}' is not a valid RFC3339 datetime string: '{value}'. "
+                "Expected format: 2026-01-01T00:00:00+00:00"
+            )
+        if dt.tzinfo is None:
+            raise ValueError(
+                f"'{name}' is missing timezone info, RFC3339 requires it: '{value}'. "
+                "Expected format: 2026-01-01T00:00:00+00:00"
+            )
+        return dt
+
+    return env_var_custom(name, parse, default, should_print_unset, required)
+
+
+@overload
+def env_var_url(
+    name: str,
+    default: str | None = ...,
+    should_print_unset: bool = ...,
+    *,
+    required: Literal[True],
+) -> str: ...
+
+
+@overload
+def env_var_url(
+    name: str,
+    default: str | None = ...,
+    should_print_unset: bool = ...,
+    required: bool = ...,
+) -> str | None: ...
+
+
+def env_var_url(
+    name: str,
+    default: str | None = None,
+    should_print_unset: bool = True,
+    required: bool = False,
+) -> str | None:
+    """
+    Reads a URL from an environment variable.
+
+    Validates that the value has a scheme (e.g. http, https, postgresql) and
+    a network location. Returns the URL string as-is.
+    """
+
+    def parse(value: str) -> str:
+        parsed = urlparse(value)
+        if not parsed.scheme or not parsed.netloc:
+            raise ValueError(f"'{name}' is not a valid URL: '{value}'")
+        return value
+
+    if default is not None:
+        default = parse(default)
+
+    return env_var_custom(name, parse, default, should_print_unset, required)
+
+
+class Secret:
+    """
+    A string-like value that masks itself in repr/str to avoid accidental
+    leakage to logs, tracebacks, or error-reporting tools (Sentry, etc.).
+
+    Call .reveal() at the point of use to access the raw value.
+    """
+
+    __slots__ = ("_value",)
+
+    def __init__(self, value: str) -> None:
+        self._value = value
+
+    def reveal(self) -> str:
+        return self._value
+
+    def __repr__(self) -> str:
+        return "Secret('***')"
+
+    def __str__(self) -> str:
+        return "***"
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, Secret):
+            return self._value == other._value
+        return NotImplemented
+
+    def __hash__(self) -> int:
+        return hash(self._value)
+
+
+@overload
+def env_var_secret(
+    name: str,
+    default: Secret | None = ...,
+    should_print_unset: bool = ...,
+    *,
+    required: Literal[True],
+) -> Secret: ...
+
+
+@overload
+def env_var_secret(
+    name: str,
+    default: Secret | None = ...,
+    should_print_unset: bool = ...,
+    required: bool = ...,
+) -> Secret | None: ...
+
+
+def env_var_secret(
+    name: str,
+    default: Secret | None = None,
+    should_print_unset: bool = True,
+    required: bool = False,
+) -> Secret | None:
+    """
+    Reads a secret from an environment variable and wraps it in a Secret
+    so it can't be accidentally logged or printed.
+    """
+    return env_var_custom(name, Secret, default, should_print_unset, required)
+
+
+@overload
+def env_var_path(
+    name: str,
+    default: Path | None = ...,
+    should_print_unset: bool = ...,
+    must_exist: bool = ...,
+    *,
+    required: Literal[True],
+) -> Path: ...
+
+
+@overload
+def env_var_path(
+    name: str,
+    default: Path | None = ...,
+    should_print_unset: bool = ...,
+    must_exist: bool = ...,
+    required: bool = ...,
+) -> Path | None: ...
+
+
+def env_var_path(
+    name: str,
+    default: Path | None = None,
+    should_print_unset: bool = True,
+    must_exist: bool = False,
+    required: bool = False,
+) -> Path | None:
+    """
+    Reads a filesystem path from an environment variable.
+
+    If must_exist=True, raises ValueError if the path does not exist on disk
+    (applied to both env value and default).
+    """
+
+    def parse(value: str) -> Path:
+        p = Path(value)
+        if must_exist and not p.exists():
+            raise ValueError(f"'{name}' path does not exist: '{p}'")
+        return p
+
+    if default is not None and must_exist and not default.exists():
+        raise ValueError(f"'{name}' default path does not exist: '{default}'")
+
+    return env_var_custom(name, parse, default, should_print_unset, required)
+
+
+@overload
+def env_var_enum(
+    name: str,
+    enum_class: type[EnumT],
+    default: EnumT | None = ...,
+    should_print_unset: bool = ...,
+    *,
+    required: Literal[True],
+) -> EnumT: ...
+
+
+@overload
+def env_var_enum(
+    name: str,
+    enum_class: type[EnumT],
+    default: EnumT | None = ...,
+    should_print_unset: bool = ...,
+    required: bool = ...,
+) -> EnumT | None: ...
+
+
+def env_var_enum(
+    name: str,
+    enum_class: type[EnumT],
+    default: EnumT | None = None,
+    should_print_unset: bool = True,
+    required: bool = False,
+) -> EnumT | None:
+    """
+    Reads an enum-valued environment variable.
+
+    Matches the value against the .value attribute of each member of enum_class.
+    Raises ValueError if no member matches.
+    """
+
+    def parse(value: str) -> EnumT:
+        try:
+            return enum_class(value)
+        except ValueError:
+            valid = [e.value for e in enum_class]
+            raise ValueError(f"'{name}' must be one of {valid}, got '{value}'")
+
+    return env_var_custom(name, parse, default, should_print_unset, required)
+
+
+_LOG_LEVELS: dict[str, int] = {
+    "DEBUG": logging.DEBUG,
+    "INFO": logging.INFO,
+    "WARNING": logging.WARNING,
+    "WARN": logging.WARNING,
+    "ERROR": logging.ERROR,
+    "CRITICAL": logging.CRITICAL,
+    "FATAL": logging.CRITICAL,
+}
+
+
+@overload
+def env_var_log_level(
+    name: str,
+    default: int | None = ...,
+    should_print_unset: bool = ...,
+    *,
+    required: Literal[True],
+) -> int: ...
+
+
+@overload
+def env_var_log_level(
+    name: str,
+    default: int | None = ...,
+    should_print_unset: bool = ...,
+    required: bool = ...,
+) -> int | None: ...
+
+
+def env_var_log_level(
+    name: str,
+    default: int | None = None,
+    should_print_unset: bool = True,
+    required: bool = False,
+) -> int | None:
+    """
+    Reads a logging level name from an environment variable and returns the
+    numeric level (e.g. 'INFO' -> 20).
+
+    Accepts DEBUG, INFO, WARNING (or WARN), ERROR, CRITICAL (or FATAL).
+    Matching is case-insensitive.
+    """
+
+    def parse(value: str) -> int:
+        level = _LOG_LEVELS.get(value.upper())
+        if level is None:
+            raise ValueError(
+                f"'{name}' must be one of {list(_LOG_LEVELS)}, got '{value}'"
+            )
+        return level
+
+    return env_var_custom(name, parse, default, should_print_unset, required)
+
+
+_DURATION_RE = re.compile(r"^(?:\d+(?:ms|s|m|h|d))+$")
+_DURATION_PART = re.compile(r"(\d+)(ms|s|m|h|d)")
+_DURATION_UNITS = {
+    "ms": "milliseconds",
+    "s": "seconds",
+    "m": "minutes",
+    "h": "hours",
+    "d": "days",
+}
+
+
+@overload
+def env_var_duration(
+    name: str,
+    default: timedelta | None = ...,
+    should_print_unset: bool = ...,
+    *,
+    required: Literal[True],
+) -> timedelta: ...
+
+
+@overload
+def env_var_duration(
+    name: str,
+    default: timedelta | None = ...,
+    should_print_unset: bool = ...,
+    required: bool = ...,
+) -> timedelta | None: ...
+
+
+def env_var_duration(
+    name: str,
+    default: timedelta | None = None,
+    should_print_unset: bool = True,
+    required: bool = False,
+) -> timedelta | None:
+    """
+    Reads a duration from an environment variable and returns a timedelta.
+
+    Accepts compound durations using the suffixes: ms, s, m (minutes), h, d.
+    Examples: '30s', '5m', '1h30m', '500ms', '7d'. Spaces between parts are
+    tolerated ('1h 30m').
+    """
+
+    def parse(value: str) -> timedelta:
+        cleaned = value.replace(" ", "")
+        if not _DURATION_RE.fullmatch(cleaned):
+            raise ValueError(
+                f"'{name}' is not a valid duration: '{value}'. "
+                "Expected format like '30s', '5m', '1h30m', '500ms'."
+            )
+        kwargs: dict[str, int] = {}
+        for num, unit in _DURATION_PART.findall(cleaned):
+            key = _DURATION_UNITS[unit]
+            kwargs[key] = kwargs.get(key, 0) + int(num)
+        return timedelta(**kwargs)
+
+    return env_var_custom(name, parse, default, should_print_unset, required)
 
 
 @dataclass
@@ -427,23 +732,6 @@ class DSN:
             f"Encrypt={yes_no(encrypt)};"
             f"TrustServerCertificate={yes_no(trust_server_certificate)}"
         )
-
-    def build_db2_string(self, ssl_cert_path: str | None = None) -> str:
-        if self.port is None:
-            raise ValueError("port is required for DB2 connection string")
-        if self.database is None:
-            raise ValueError("database is required for DB2 connection string")
-        base = (
-            f"DATABASE={self.database};"
-            f"HOSTNAME={self.hostname};"
-            f"PORT={self.port};"
-            f"PROTOCOL=TCPIP;"
-            f"UID={self.username};"
-            f"PWD={self.password};"
-        )
-        if ssl_cert_path:
-            base += f"Security=SSL;SSLServerCertificate={ssl_cert_path};"
-        return base
 
     def __post_init__(self) -> None:
         self.connection_string = self._build_connection_string()

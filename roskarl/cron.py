@@ -1,7 +1,6 @@
 from typing import Annotated, Literal, overload
-import os
-from roskarl.notify import print_unset
 from icron import croniter
+from roskarl.env import env_var_custom
 
 
 def _field_has_offset(field: str, allow_one: bool = False) -> bool:
@@ -114,20 +113,18 @@ def env_var_cron(
     Raises ValueError if the value is not a valid 5-field cron expression, or if
     required is True and the variable is not set.
     """
-    value = os.environ.get(name)
-    if not value:
-        if default is not None:
-            return default
-        if required:
-            raise ValueError(f"Environment variable '{name}' is not set")
-        if should_print_unset:
-            print_unset(name)
-        return None
-    if not croniter.is_valid(expression=value):
-        raise ValueError(
-            f"Environment variable '{name}' is not a valid cron expression."
-        )
-    return value
+
+    def parse(value: str) -> str:
+        if not croniter.is_valid(expression=value):
+            raise ValueError(
+                f"Environment variable '{name}' is not a valid cron expression."
+            )
+        return value
+
+    if default is not None:
+        default = parse(default)
+
+    return env_var_custom(name, parse, default, should_print_unset, required)
 
 
 @overload
@@ -165,29 +162,23 @@ def env_var_interval_expression(
     Raises ValueError if the value is not a valid cron expression, has an offset on any
     field, or if required is True and the variable is not set.
     """
-    raw = os.environ.get(name)
-    value = INTERVAL_EXPRESSION_SHORTCUTS.get(raw.lower(), raw) if raw else None
+
+    def parse(value: str) -> IntervalExpression:
+        resolved = INTERVAL_EXPRESSION_SHORTCUTS.get(value.lower(), value)
+        if not croniter.is_valid(expression=resolved):
+            raise ValueError(
+                f"Environment variable '{name}' is not a valid cron expression."
+            )
+        if has_offset(resolved):
+            raise ValueError(
+                f"Environment variable '{name}' has a cron offset: '{resolved}'"
+            )
+        return resolved
+
     if default is not None:
-        default = INTERVAL_EXPRESSION_SHORTCUTS.get(default.lower(), default)
-    if value is None:
-        if default is not None:
-            if has_offset(default):
-                raise ValueError(
-                    f"Environment variable '{name}' has a cron offset: '{default}'"
-                )
-            return default
-        if required:
-            raise ValueError(f"Environment variable '{name}' is not set")
-        if should_print_unset:
-            print_unset(name)
-        return None
-    if not croniter.is_valid(expression=value):
-        raise ValueError(
-            f"Environment variable '{name}' is not a valid cron expression."
-        )
-    if has_offset(value):
-        raise ValueError(f"Environment variable '{name}' has a cron offset: '{value}'")
-    return value
+        default = parse(default)
+
+    return env_var_custom(name, parse, default, should_print_unset, required)
 
 
 @overload
@@ -224,29 +215,24 @@ def env_var_interval_expression_extended(
     Raises ValueError if the value is not a valid 6-field cron expression, has an offset
     on any field, or if required is True and the variable is not set.
     """
-    raw = os.environ.get(name)
-    value = (
-        INTERVAL_EXPRESSION_EXTENDED_SHORTCUTS.get(raw.lower(), raw) if raw else None
-    )
+
+    def parse(value: str) -> IntervalExpressionExtended:
+        resolved = INTERVAL_EXPRESSION_EXTENDED_SHORTCUTS.get(value.lower(), value)
+        if len(resolved.split()) != 6:
+            raise ValueError(
+                f"Environment variable '{name}' must be a 6-field cron expression."
+            )
+        if not croniter.is_valid(expression=resolved):
+            raise ValueError(
+                f"Environment variable '{name}' is not a valid cron expression."
+            )
+        if has_offset(resolved):
+            raise ValueError(
+                f"Environment variable '{name}' has a cron offset: '{resolved}'"
+            )
+        return resolved
+
     if default is not None:
-        default = INTERVAL_EXPRESSION_EXTENDED_SHORTCUTS.get(default.lower(), default)
-    if not value:
-        if default is not None:
-            value = default
-        elif required:
-            raise ValueError(f"Environment variable '{name}' is not set")
-        else:
-            if should_print_unset:
-                print_unset(name)
-            return None
-    if len(value.split()) != 6:
-        raise ValueError(
-            f"Environment variable '{name}' must be a 6-field cron expression."
-        )
-    if not croniter.is_valid(expression=value):
-        raise ValueError(
-            f"Environment variable '{name}' is not a valid cron expression."
-        )
-    if has_offset(value):
-        raise ValueError(f"Environment variable '{name}' has a cron offset: '{value}'")
-    return value
+        default = parse(default)
+
+    return env_var_custom(name, parse, default, should_print_unset, required)

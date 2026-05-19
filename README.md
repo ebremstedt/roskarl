@@ -21,16 +21,24 @@ from roskarl import (
     env_var,
     env_var_bool,
     env_var_cron,
+    env_var_custom,
+    env_var_duration,
+    env_var_enum,
     env_var_interval_expression,
     env_var_interval_expression_extended,
     env_var_float,
     env_var_int,
     env_var_iso8601_datetime,
     env_var_list,
+    env_var_log_level,
+    env_var_path,
     env_var_rfc3339_datetime,
+    env_var_secret,
     env_var_tz,
+    env_var_url,
     env_var_dsn,
-    DSN
+    DSN,
+    Secret,
 )
 ```
 
@@ -90,6 +98,58 @@ value = env_var_iso8601_datetime(name="DATETIME_VAR")
 ### datetime (RFC3339) (returns **`datetime`** if value is a valid [RFC3339](https://www.rfc-editor.org/rfc/rfc3339) datetime string — timezone is required)
 ```python
 value = env_var_rfc3339_datetime(name="DATETIME_VAR")
+```
+
+### url (returns **`str`** if value has a scheme + netloc, e.g. `https://example.com`)
+```python
+value = env_var_url(name="API_URL")
+```
+
+### secret (returns **`Secret`** — wraps the value so it can't accidentally be logged)
+`repr()` and `str()` return `***`. Call `.reveal()` at the point of use.
+```python
+key = env_var_secret(name="API_KEY", required=True)
+print(key)            # ***
+stripe.api_key = key.reveal()
+```
+
+### path (returns **`pathlib.Path`**)
+Pass `must_exist=True` to fail fast if the path is not present on disk.
+```python
+value = env_var_path(name="CONFIG_PATH", must_exist=True)
+```
+
+### enum (returns an instance of your `Enum` subclass)
+Matches against each member's `.value`. Raises `ValueError` if no match.
+```python
+from enum import Enum
+class Mode(Enum):
+    LIVE = "live"
+    DRY_RUN = "dry-run"
+
+value = env_var_enum(name="MODE", enum_class=Mode, required=True)
+```
+
+### duration (returns **`timedelta`**)
+Parses compound duration strings using suffixes `ms`, `s`, `m`, `h`, `d`. Spaces between parts are tolerated.
+```python
+value = env_var_duration(name="REQUEST_TIMEOUT", default=timedelta(seconds=30))
+# accepts: "30s", "5m", "1h30m", "500ms", "7d", "1h 30m"
+```
+
+### log level (returns **`int`** matching Python's `logging` levels)
+Accepts `DEBUG`, `INFO`, `WARNING`/`WARN`, `ERROR`, `CRITICAL`/`FATAL` (case-insensitive).
+```python
+import logging
+level = env_var_log_level(name="LOG_LEVEL", default=logging.INFO)
+logging.basicConfig(level=level)
+```
+
+### custom (returns whatever your parser returns)
+Escape hatch for types without a dedicated helper — pass any `Callable[[str], T]`.
+```python
+from uuid import UUID
+value = env_var_custom(name="UUID_VAR", parser=UUID, required=True)  # type: UUID
 ```
 
 ### DSN

@@ -1,11 +1,23 @@
+import logging
 import os
+import tempfile
 import unittest
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
+from enum import Enum
+from pathlib import Path
+from uuid import UUID
 from roskarl import (
     env_var,
     env_var_cron,
+    env_var_custom,
     env_var_dsn,
+    env_var_duration,
+    env_var_enum,
+    env_var_log_level,
+    env_var_path,
+    env_var_secret,
     env_var_tz,
+    env_var_url,
     env_var_list,
     env_var_bool,
     env_var_int,
@@ -14,6 +26,7 @@ from roskarl import (
     env_var_rfc3339_datetime,
     env_var_dsn,
     DSN,
+    Secret,
 )
 
 
@@ -52,6 +65,10 @@ class TestEnvVarUtils(unittest.TestCase):
 
     def test_env_var_tz_not_set_returns_default(self):
         self.assertEqual(env_var_tz("TEST_TZ", default="UTC"), "UTC")
+
+    def test_env_var_tz_invalid_default_raises(self):
+        with self.assertRaises(ValueError):
+            env_var_tz("TEST_TZ", default="Invalid/Timezone")
 
     # env_var_list
     def test_env_var_list_default_separator(self):
@@ -300,6 +317,407 @@ class TestEnvVarUtils(unittest.TestCase):
         result = env_var_dsn("TEST_DSN", default=dsn)
         self.assertEqual(result.username, "user@name")
         self.assertEqual(result.password, "p@ssword")
+
+    def test_dsn_libpq_string(self):
+        dsn = DSN(
+            protocol="postgresql",
+            username="user",
+            password="pass",
+            hostname="localhost",
+            port=5432,
+            database="mydb",
+        )
+        self.assertEqual(
+            dsn.libpq_string,
+            "host=localhost user=user password=pass port=5432 dbname=mydb",
+        )
+
+    def test_dsn_build_mssql_string(self):
+        dsn = DSN(
+            protocol="mssql",
+            username="sa",
+            password="pw",
+            hostname="db.example.com",
+            port=1433,
+            database="mydb",
+        )
+        result = dsn.build_mssql_string()
+        self.assertIn("DRIVER={ODBC Driver 18 for SQL Server}", result)
+        self.assertIn("SERVER=db.example.com,1433", result)
+        self.assertIn("DATABASE=mydb", result)
+        self.assertIn("UID=sa", result)
+        self.assertIn("PWD=pw", result)
+        self.assertIn("Encrypt=yes", result)
+        self.assertIn("TrustServerCertificate=yes", result)
+
+    def test_dsn_build_mssql_string_requires_port(self):
+        dsn = DSN(
+            protocol="mssql",
+            username="sa",
+            password="pw",
+            hostname="db.example.com",
+            database="mydb",
+        )
+        with self.assertRaises(ValueError):
+            dsn.build_mssql_string()
+
+    def test_dsn_build_mssql_string_requires_database(self):
+        dsn = DSN(
+            protocol="mssql",
+            username="sa",
+            password="pw",
+            hostname="db.example.com",
+            port=1433,
+        )
+        with self.assertRaises(ValueError):
+            dsn.build_mssql_string()
+
+    def test_dsn_to_dict(self):
+        dsn = DSN(
+            protocol="postgresql",
+            username="user",
+            password="pass",
+            hostname="localhost",
+            port=5432,
+            database="mydb",
+        )
+        self.assertEqual(
+            dsn.to_dict(),
+            {
+                "protocol": "postgresql",
+                "username": "user",
+                "password": "pass",
+                "hostname": "localhost",
+                "port": 5432,
+                "database": "mydb",
+            },
+        )
+
+
+class TestRequiredRaisesWhenUnset(unittest.TestCase):
+    """Locks in the behavior the `required=True` overloads exist for."""
+
+    def setUp(self):
+        self.original_environ = os.environ.copy()
+        os.environ.clear()
+
+    def tearDown(self):
+        os.environ.clear()
+        os.environ.update(self.original_environ)
+
+    def test_env_var(self):
+        with self.assertRaises(ValueError):
+            env_var("MISSING", required=True)
+
+    def test_env_var_tz(self):
+        with self.assertRaises(ValueError):
+            env_var_tz("MISSING", required=True)
+
+    def test_env_var_list(self):
+        with self.assertRaises(ValueError):
+            env_var_list("MISSING", required=True)
+
+    def test_env_var_bool(self):
+        with self.assertRaises(ValueError):
+            env_var_bool("MISSING", required=True)
+
+    def test_env_var_int(self):
+        with self.assertRaises(ValueError):
+            env_var_int("MISSING", required=True)
+
+    def test_env_var_float(self):
+        with self.assertRaises(ValueError):
+            env_var_float("MISSING", required=True)
+
+    def test_env_var_iso8601_datetime(self):
+        with self.assertRaises(ValueError):
+            env_var_iso8601_datetime("MISSING", required=True)
+
+    def test_env_var_rfc3339_datetime(self):
+        with self.assertRaises(ValueError):
+            env_var_rfc3339_datetime("MISSING", required=True)
+
+    def test_default_wins_over_required(self):
+        self.assertEqual(env_var("MISSING", default="x", required=True), "x")
+
+    def test_empty_string_is_treated_as_unset(self):
+        os.environ["EMPTY"] = ""
+        self.assertIsNone(env_var("EMPTY", should_print_unset=False))
+        with self.assertRaises(ValueError):
+            env_var("EMPTY", required=True)
+
+
+class TestEnvVarCustom(unittest.TestCase):
+    def setUp(self):
+        self.original_environ = os.environ.copy()
+        os.environ.clear()
+
+    def tearDown(self):
+        os.environ.clear()
+        os.environ.update(self.original_environ)
+
+    def test_parses_with_callable(self):
+        os.environ["MY_UUID"] = "12345678-1234-5678-1234-567812345678"
+        result = env_var_custom("MY_UUID", UUID)
+        self.assertEqual(result, UUID("12345678-1234-5678-1234-567812345678"))
+
+    def test_parser_not_called_when_unset(self):
+        def boom(_: str):
+            raise AssertionError("parser should not be called when unset")
+
+        self.assertIsNone(env_var_custom("MISSING", boom, should_print_unset=False))
+
+    def test_parser_not_called_when_empty(self):
+        os.environ["EMPTY"] = ""
+
+        def boom(_: str):
+            raise AssertionError("parser should not be called for empty value")
+
+        self.assertIsNone(env_var_custom("EMPTY", boom, should_print_unset=False))
+
+    def test_returns_default_when_unset(self):
+        sentinel = UUID("00000000-0000-0000-0000-000000000000")
+        self.assertEqual(env_var_custom("MISSING", UUID, default=sentinel), sentinel)
+
+    def test_required_raises_when_unset(self):
+        with self.assertRaises(ValueError):
+            env_var_custom("MISSING", UUID, required=True)
+
+    def test_parser_error_propagates(self):
+        os.environ["BAD"] = "not-a-uuid"
+        with self.assertRaises(ValueError):
+            env_var_custom("BAD", UUID)
+
+
+class TestEnvVarUrl(unittest.TestCase):
+    def setUp(self):
+        self.original_environ = os.environ.copy()
+        os.environ.clear()
+
+    def tearDown(self):
+        os.environ.clear()
+        os.environ.update(self.original_environ)
+
+    def test_valid_https(self):
+        os.environ["U"] = "https://example.com/path"
+        self.assertEqual(env_var_url("U"), "https://example.com/path")
+
+    def test_valid_non_http_scheme(self):
+        os.environ["U"] = "postgresql://user:pass@host:5432/db"
+        self.assertEqual(env_var_url("U"), "postgresql://user:pass@host:5432/db")
+
+    def test_missing_scheme_raises(self):
+        os.environ["U"] = "example.com/path"
+        with self.assertRaises(ValueError):
+            env_var_url("U")
+
+    def test_missing_netloc_raises(self):
+        os.environ["U"] = "https://"
+        with self.assertRaises(ValueError):
+            env_var_url("U")
+
+    def test_invalid_default_raises(self):
+        with self.assertRaises(ValueError):
+            env_var_url("U", default="not-a-url")
+
+    def test_returns_default_when_unset(self):
+        self.assertEqual(
+            env_var_url("U", default="https://fallback.test"),
+            "https://fallback.test",
+        )
+
+
+class TestEnvVarSecret(unittest.TestCase):
+    def setUp(self):
+        self.original_environ = os.environ.copy()
+        os.environ.clear()
+
+    def tearDown(self):
+        os.environ.clear()
+        os.environ.update(self.original_environ)
+
+    def test_returns_secret_wrapper(self):
+        os.environ["S"] = "super-secret"
+        result = env_var_secret("S")
+        self.assertIsInstance(result, Secret)
+        self.assertEqual(result.reveal(), "super-secret")
+
+    def test_repr_is_masked(self):
+        secret = Secret("hunter2")
+        self.assertNotIn("hunter2", repr(secret))
+        self.assertNotIn("hunter2", str(secret))
+        self.assertNotIn("hunter2", f"{secret}")
+        self.assertNotIn("hunter2", f"value={secret}")
+
+    def test_eq(self):
+        self.assertEqual(Secret("a"), Secret("a"))
+        self.assertNotEqual(Secret("a"), Secret("b"))
+        self.assertNotEqual(Secret("a"), "a")
+
+    def test_hashable(self):
+        self.assertEqual(hash(Secret("a")), hash(Secret("a")))
+
+    def test_default_used_when_unset(self):
+        fallback = Secret("fallback")
+        self.assertEqual(env_var_secret("S", default=fallback), fallback)
+
+
+class TestEnvVarPath(unittest.TestCase):
+    def setUp(self):
+        self.original_environ = os.environ.copy()
+        os.environ.clear()
+
+    def tearDown(self):
+        os.environ.clear()
+        os.environ.update(self.original_environ)
+
+    def test_returns_path(self):
+        os.environ["P"] = "/tmp/foo"
+        result = env_var_path("P")
+        self.assertIsInstance(result, Path)
+        self.assertEqual(result, Path("/tmp/foo"))
+
+    def test_must_exist_passes_for_existing(self):
+        with tempfile.NamedTemporaryFile() as f:
+            os.environ["P"] = f.name
+            self.assertEqual(env_var_path("P", must_exist=True), Path(f.name))
+
+    def test_must_exist_raises_for_missing(self):
+        os.environ["P"] = "/definitely/does/not/exist/xyz123"
+        with self.assertRaises(ValueError):
+            env_var_path("P", must_exist=True)
+
+    def test_must_exist_validates_default(self):
+        with self.assertRaises(ValueError):
+            env_var_path(
+                "P", default=Path("/definitely/does/not/exist/xyz123"), must_exist=True
+            )
+
+
+class _Color(Enum):
+    RED = "red"
+    GREEN = "green"
+    BLUE = "blue"
+
+
+class TestEnvVarEnum(unittest.TestCase):
+    def setUp(self):
+        self.original_environ = os.environ.copy()
+        os.environ.clear()
+
+    def tearDown(self):
+        os.environ.clear()
+        os.environ.update(self.original_environ)
+
+    def test_valid_member(self):
+        os.environ["C"] = "red"
+        self.assertEqual(env_var_enum("C", _Color), _Color.RED)
+
+    def test_invalid_member_raises(self):
+        os.environ["C"] = "purple"
+        with self.assertRaises(ValueError):
+            env_var_enum("C", _Color)
+
+    def test_default_used_when_unset(self):
+        self.assertEqual(env_var_enum("C", _Color, default=_Color.BLUE), _Color.BLUE)
+
+
+class TestEnvVarLogLevel(unittest.TestCase):
+    def setUp(self):
+        self.original_environ = os.environ.copy()
+        os.environ.clear()
+
+    def tearDown(self):
+        os.environ.clear()
+        os.environ.update(self.original_environ)
+
+    def test_info(self):
+        os.environ["L"] = "INFO"
+        self.assertEqual(env_var_log_level("L"), logging.INFO)
+
+    def test_case_insensitive(self):
+        os.environ["L"] = "debug"
+        self.assertEqual(env_var_log_level("L"), logging.DEBUG)
+
+    def test_warn_alias(self):
+        os.environ["L"] = "WARN"
+        self.assertEqual(env_var_log_level("L"), logging.WARNING)
+
+    def test_fatal_alias(self):
+        os.environ["L"] = "FATAL"
+        self.assertEqual(env_var_log_level("L"), logging.CRITICAL)
+
+    def test_invalid_raises(self):
+        os.environ["L"] = "VERBOSE"
+        with self.assertRaises(ValueError):
+            env_var_log_level("L")
+
+    def test_default_used_when_unset(self):
+        self.assertEqual(env_var_log_level("L", default=logging.INFO), logging.INFO)
+
+
+class TestEnvVarDuration(unittest.TestCase):
+    def setUp(self):
+        self.original_environ = os.environ.copy()
+        os.environ.clear()
+
+    def tearDown(self):
+        os.environ.clear()
+        os.environ.update(self.original_environ)
+
+    def test_seconds(self):
+        os.environ["D"] = "30s"
+        self.assertEqual(env_var_duration("D"), timedelta(seconds=30))
+
+    def test_minutes(self):
+        os.environ["D"] = "5m"
+        self.assertEqual(env_var_duration("D"), timedelta(minutes=5))
+
+    def test_hours(self):
+        os.environ["D"] = "2h"
+        self.assertEqual(env_var_duration("D"), timedelta(hours=2))
+
+    def test_days(self):
+        os.environ["D"] = "7d"
+        self.assertEqual(env_var_duration("D"), timedelta(days=7))
+
+    def test_milliseconds(self):
+        os.environ["D"] = "500ms"
+        self.assertEqual(env_var_duration("D"), timedelta(milliseconds=500))
+
+    def test_compound(self):
+        os.environ["D"] = "1h30m"
+        self.assertEqual(env_var_duration("D"), timedelta(hours=1, minutes=30))
+
+    def test_compound_with_ms(self):
+        os.environ["D"] = "2h45m30s500ms"
+        self.assertEqual(
+            env_var_duration("D"),
+            timedelta(hours=2, minutes=45, seconds=30, milliseconds=500),
+        )
+
+    def test_tolerates_spaces(self):
+        os.environ["D"] = "1h 30m"
+        self.assertEqual(env_var_duration("D"), timedelta(hours=1, minutes=30))
+
+    def test_bare_number_raises(self):
+        os.environ["D"] = "30"
+        with self.assertRaises(ValueError):
+            env_var_duration("D")
+
+    def test_unknown_unit_raises(self):
+        os.environ["D"] = "30x"
+        with self.assertRaises(ValueError):
+            env_var_duration("D")
+
+    def test_trailing_garbage_raises(self):
+        os.environ["D"] = "30s garbage"
+        with self.assertRaises(ValueError):
+            env_var_duration("D")
+
+    def test_default_used_when_unset(self):
+        fallback = timedelta(minutes=10)
+        self.assertEqual(env_var_duration("D", default=fallback), fallback)
 
 
 if __name__ == "__main__":
