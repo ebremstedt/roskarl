@@ -332,6 +332,44 @@ class TestEnvVarUtils(unittest.TestCase):
             "host=localhost user=user password=pass port=5432 dbname=mydb",
         )
 
+    def test_dsn_libpq_string_no_port(self):
+        dsn = DSN(
+            protocol="postgresql",
+            username="user",
+            password="pass",
+            hostname="localhost",
+            database="mydb",
+        )
+        self.assertEqual(
+            dsn.libpq_string,
+            "host=localhost user=user password=pass dbname=mydb",
+        )
+
+    def test_dsn_libpq_string_no_database(self):
+        dsn = DSN(
+            protocol="postgresql",
+            username="user",
+            password="pass",
+            hostname="localhost",
+            port=5432,
+        )
+        self.assertEqual(
+            dsn.libpq_string,
+            "host=localhost user=user password=pass port=5432",
+        )
+
+    def test_dsn_libpq_string_no_port_no_database(self):
+        dsn = DSN(
+            protocol="postgresql",
+            username="user",
+            password="pass",
+            hostname="localhost",
+        )
+        self.assertEqual(
+            dsn.libpq_string,
+            "host=localhost user=user password=pass",
+        )
+
     def test_dsn_build_mssql_string(self):
         dsn = DSN(
             protocol="mssql",
@@ -341,14 +379,38 @@ class TestEnvVarUtils(unittest.TestCase):
             port=1433,
             database="mydb",
         )
-        result = dsn.build_mssql_string()
-        self.assertIn("DRIVER={ODBC Driver 18 for SQL Server}", result)
-        self.assertIn("SERVER=db.example.com,1433", result)
-        self.assertIn("DATABASE=mydb", result)
-        self.assertIn("UID=sa", result)
-        self.assertIn("PWD=pw", result)
-        self.assertIn("Encrypt=yes", result)
-        self.assertIn("TrustServerCertificate=yes", result)
+        self.assertEqual(
+            dsn.build_mssql_string(),
+            "DRIVER={ODBC Driver 18 for SQL Server};SERVER=db.example.com,1433;DATABASE=mydb;UID=sa;PWD=pw;Encrypt=yes;TrustServerCertificate=yes",
+        )
+
+    def test_dsn_build_mssql_string_no_encrypt(self):
+        dsn = DSN(
+            protocol="mssql",
+            username="sa",
+            password="pw",
+            hostname="db.example.com",
+            port=1433,
+            database="mydb",
+        )
+        self.assertEqual(
+            dsn.build_mssql_string(encrypt=False, trust_server_certificate=False),
+            "DRIVER={ODBC Driver 18 for SQL Server};SERVER=db.example.com,1433;DATABASE=mydb;UID=sa;PWD=pw;Encrypt=no;TrustServerCertificate=no",
+        )
+
+    def test_dsn_build_mssql_string_custom_driver(self):
+        dsn = DSN(
+            protocol="mssql",
+            username="sa",
+            password="pw",
+            hostname="db.example.com",
+            port=1433,
+            database="mydb",
+        )
+        self.assertEqual(
+            dsn.build_mssql_string(driver="ODBC Driver 17 for SQL Server"),
+            "DRIVER={ODBC Driver 17 for SQL Server};SERVER=db.example.com,1433;DATABASE=mydb;UID=sa;PWD=pw;Encrypt=yes;TrustServerCertificate=yes",
+        )
 
     def test_dsn_build_mssql_string_requires_port(self):
         dsn = DSN(
