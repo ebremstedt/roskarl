@@ -720,5 +720,45 @@ class TestEnvVarDuration(unittest.TestCase):
         self.assertEqual(env_var_duration("D", default=fallback), fallback)
 
 
+class TestDSNDatabaseNameWithSpaces(unittest.TestCase):
+    def setUp(self):
+        self.original_environ = os.environ.copy()
+
+    def tearDown(self):
+        os.environ.clear()
+        os.environ.update(self.original_environ)
+
+    def test_percent_encoded_space(self):
+        os.environ["TEST_DSN"] = "mssql://user:pass@host:1433/SDWH%20RIS%20Datamodel"
+        result = env_var_dsn("TEST_DSN")
+        self.assertEqual(result.database, "SDWH RIS Datamodel")
+
+    def test_literal_space_in_database(self):
+        os.environ["TEST_DSN"] = "mssql://user:pass@host:1433/SDWH RIS Datamodel"
+        result = env_var_dsn("TEST_DSN")
+        self.assertEqual(result.database, "SDWH RIS Datamodel")
+
+    def test_multiple_spaces_percent_encoded(self):
+        os.environ["TEST_DSN"] = "mssql://user:pass@host:1433/My%20Database%20Name"
+        result = env_var_dsn("TEST_DSN")
+        self.assertEqual(result.database, "My Database Name")
+
+    def test_no_space_database_unaffected(self):
+        os.environ["TEST_DSN"] = "mssql://user:pass@host:1433/SimpleDB"
+        result = env_var_dsn("TEST_DSN")
+        self.assertEqual(result.database, "SimpleDB")
+
+    def test_mssql_string_with_spaced_database(self):
+        os.environ["TEST_DSN"] = "mssql://sa:pw@db.example.com:1433/SDWH%20RIS%20Datamodel"
+        result = env_var_dsn("TEST_DSN")
+        mssql = result.build_mssql_string()
+        self.assertIn("DATABASE=SDWH RIS Datamodel", mssql)
+
+    def test_connection_string_contains_decoded_database(self):
+        os.environ["TEST_DSN"] = "mssql://user:pass@host:1433/SDWH%20RIS%20Datamodel"
+        result = env_var_dsn("TEST_DSN")
+        self.assertIn("SDWH RIS Datamodel", result.connection_string)
+
+
 if __name__ == "__main__":
     unittest.main()
