@@ -791,7 +791,7 @@ def env_var_dsn(name: str, default: DSN | None = None) -> DSN:
         password = unquote(credentials[colon_pos + 1 :])
         database_parts = host_part.split("/", 1)
         host_and_port = database_parts[0]
-        database = database_parts[1] if len(database_parts) > 1 else None
+        database = unquote(database_parts[1]) if len(database_parts) > 1 else None
         if ":" in host_and_port:
             hostname, port_str = host_and_port.rsplit(":", 1)
             port = int(port_str)
