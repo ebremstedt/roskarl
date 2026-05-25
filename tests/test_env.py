@@ -813,8 +813,10 @@ class TestDSNDatabaseNameWithSpaces(unittest.TestCase):
     def test_mssql_string_with_spaced_database(self):
         os.environ["TEST_DSN"] = "mssql://sa:pw@db.example.com:1433/SDWH%20RIS%20Datamodel"
         result = env_var_dsn("TEST_DSN")
-        mssql = result.build_mssql_string()
-        self.assertIn("DATABASE=SDWH RIS Datamodel", mssql)
+        self.assertEqual(
+            result.build_mssql_string(),
+            "DRIVER={ODBC Driver 18 for SQL Server};SERVER=db.example.com,1433;DATABASE=SDWH RIS Datamodel;UID=sa;PWD=pw;Encrypt=yes;TrustServerCertificate=yes",
+        )
 
     def test_connection_string_contains_decoded_database(self):
         os.environ["TEST_DSN"] = "mssql://user:pass@host:1433/SDWH%20RIS%20Datamodel"
