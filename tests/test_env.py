@@ -811,7 +811,9 @@ class TestDSNDatabaseNameWithSpaces(unittest.TestCase):
         self.assertEqual(result.database, "SimpleDB")
 
     def test_mssql_string_with_spaced_database(self):
-        os.environ["TEST_DSN"] = "mssql://sa:pw@db.example.com:1433/SDWH%20RIS%20Datamodel"
+        os.environ["TEST_DSN"] = (
+            "mssql://sa:pw@db.example.com:1433/SDWH%20RIS%20Datamodel"
+        )
         result = env_var_dsn("TEST_DSN")
         self.assertEqual(
             result.build_mssql_string(),
