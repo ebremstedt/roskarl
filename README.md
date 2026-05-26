@@ -114,7 +114,7 @@ stripe.api_key = key.reveal()
 ```
 
 ### path (returns **`pathlib.Path`**)
-Pass `must_exist=True` to fail fast if the path is not present on disk.
+Pass `must_exist=True` to fail fast if the path is not present on disk
 ```python
 value = env_var_path(name="CONFIG_PATH", must_exist=True)
 ```
