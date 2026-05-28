@@ -120,7 +120,7 @@ value = env_var_path(name="CONFIG_PATH", must_exist=True)
 ```
 
 ### enum (returns an instance of your `Enum` subclass)
-Matches against each member's `.value`. Raises `ValueError` if no match.
+Matches against each member's `.value`. Raises `ValueError` if no match
 ```python
 from enum import Enum
 class Mode(Enum):
