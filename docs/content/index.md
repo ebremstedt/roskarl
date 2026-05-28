@@ -27,35 +27,20 @@ Requires Python 3.11+.
 
 ## Usage
 
-All functions return `None` if the variable is not set. Pass `default=...` to return a fallback instead.
-
-Pass `required=True` to raise instead of returning `None` — type checkers will narrow the return type accordingly (e.g. `str` instead of `str | None`), so no `assert` is needed at callsites.
-
 ```python
-from roskarl import (
-    env_var,
-    env_var_bool,
-    env_var_cron,
-    env_var_custom,
-    env_var_duration,
-    env_var_enum,
-    env_var_interval_expression,
-    env_var_interval_expression_extended,
-    env_var_float,
-    env_var_int,
-    env_var_iso8601_datetime,
-    env_var_list,
-    env_var_log_level,
-    env_var_path,
-    env_var_rfc3339_datetime,
-    env_var_secret,
-    env_var_tz,
-    env_var_url,
-    env_var_dsn,
-    DSN,
-    Secret,
-)
+from roskarl import env_var_iso8601_datetime
+
+dt = env_var_iso8601_datetime("STARTED_AT", required=True)
 ```
+
+Every helper takes the same arguments:
+
+| Argument             | Type   | Default | Behavior                                                                                          |
+|----------------------|--------|---------|---------------------------------------------------------------------------------------------------|
+| `name`               | `str`  | —       | The environment variable to read.                                                                 |
+| `default`            | `T`    | `None`  | Value returned when the env var is unset or empty. Validated through the parser where applicable. |
+| `required`           | `bool` | `False` | When `True`, raises `ValueError` if unset. Narrows the return type from `T \| None` to `T`.       |
+| `should_print_unset` | `bool` | `True`  | When `True`, prints `"<name> not set or set to None."` if the variable is missing.                |
 
 ## Helpers
 
