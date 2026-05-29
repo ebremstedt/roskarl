@@ -5,12 +5,9 @@ hide:
 
 <h1 style="display:none"></h1>
 
-<div style="text-align: center; padding: 2em 0 1em 0;" markdown="1">
-  <div style="font-size: 8em; line-height: 1; color: var(--md-primary-fg-color);" markdown="1">
-:material-bird:
-  </div>
-  <h1 style="margin: 0.2em 0 0 0; font-size: 3em; letter-spacing: 0.05em;">roskarl</h1>
-  <p style="font-size: 1.2em; opacity: 0.8; margin-top: 0;">
+<div style="text-align: center; padding: 2em 0 1em 0;">
+  <img src="roskarl_logo.png" alt="roskarl" style="max-width: 320px; width: 100%; height: auto;">
+  <p style="font-size: 1.2em; opacity: 0.8; margin-top: 0.5em;">
     Tiny environment variable helpers for Python
   </p>
 </div>
