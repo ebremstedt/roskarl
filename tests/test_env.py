@@ -825,6 +825,7 @@ class TestDSNDatabaseNameWithSpaces(unittest.TestCase):
         result = env_var_dsn("TEST_DSN")
         self.assertIn("SDWH RIS Datamodel", result.connection_string)
 
+
 class TestDSNBuildDb2String(unittest.TestCase):
     def test_basic(self):
         dsn = DSN(
@@ -888,6 +889,7 @@ class TestDSNBuildDb2String(unittest.TestCase):
         result = dsn.build_db2_string(ssl_cert_path=None)
         self.assertNotIn("Security", result)
         self.assertNotIn("SSLServerCertificate", result)
+
 
 if __name__ == "__main__":
     unittest.main()

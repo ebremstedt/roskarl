@@ -44,7 +44,7 @@ from roskarl import (
 
 All functions return `None` if the variable is not set. An optional `default` parameter can be provided to return a fallback value instead.
 
-Pass `required=True` to raise instead of returning `None` — type checkers will narrow the return type accordingly (e.g. `str` instead of `str | None`), so no `assert` is needed at callsites.
+Pass `required=True` to raise instead of returning `None` — type checkers will narrow the return type accordingly (e.g. `str` instead of `str | None`), so no `assert` is needed at callsites
 
 ### str (returns **`str`**)
 ```python
