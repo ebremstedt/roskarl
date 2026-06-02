@@ -825,6 +825,69 @@ class TestDSNDatabaseNameWithSpaces(unittest.TestCase):
         result = env_var_dsn("TEST_DSN")
         self.assertIn("SDWH RIS Datamodel", result.connection_string)
 
+class TestDSNBuildDb2String(unittest.TestCase):
+    def test_basic(self):
+        dsn = DSN(
+            protocol="db2",
+            username="user",
+            password="pass",
+            hostname="db.example.com",
+            port=50000,
+            database="mydb",
+        )
+        self.assertEqual(
+            dsn.build_db2_string(),
+            "DATABASE=mydb;HOSTNAME=db.example.com;PORT=50000;PROTOCOL=TCPIP;UID=user;PWD=pass;",
+        )
+
+    def test_with_ssl_cert(self):
+        dsn = DSN(
+            protocol="db2",
+            username="user",
+            password="pass",
+            hostname="db.example.com",
+            port=50000,
+            database="mydb",
+        )
+        self.assertEqual(
+            dsn.build_db2_string(ssl_cert_path="/tmp/heroma/db2_cert.pem"),
+            "DATABASE=mydb;HOSTNAME=db.example.com;PORT=50000;PROTOCOL=TCPIP;UID=user;PWD=pass;Security=SSL;SSLServerCertificate=/tmp/heroma/db2_cert.pem;",
+        )
+
+    def test_requires_port(self):
+        dsn = DSN(
+            protocol="db2",
+            username="user",
+            password="pass",
+            hostname="db.example.com",
+            database="mydb",
+        )
+        with self.assertRaises(ValueError):
+            dsn.build_db2_string()
+
+    def test_requires_database(self):
+        dsn = DSN(
+            protocol="db2",
+            username="user",
+            password="pass",
+            hostname="db.example.com",
+            port=50000,
+        )
+        with self.assertRaises(ValueError):
+            dsn.build_db2_string()
+
+    def test_ssl_cert_none_omits_ssl_fields(self):
+        dsn = DSN(
+            protocol="db2",
+            username="user",
+            password="pass",
+            hostname="db.example.com",
+            port=50000,
+            database="mydb",
+        )
+        result = dsn.build_db2_string(ssl_cert_path=None)
+        self.assertNotIn("Security", result)
+        self.assertNotIn("SSLServerCertificate", result)
 
 if __name__ == "__main__":
     unittest.main()
