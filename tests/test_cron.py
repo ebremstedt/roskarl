@@ -47,6 +47,29 @@ class TestHasOffset:
     def test_minute_1_is_still_offset(self):
         assert has_offset("1 * * * *") is True
 
+    def test_yearly_is_not_offset(self):
+        # month is 1-indexed like day-of-month, so '1' is its zero boundary.
+        assert has_offset("0 0 1 1 *") is False
+
+    def test_yearly_extended_is_not_offset(self):
+        assert has_offset("0 0 0 1 1 *") is False
+
+    def test_month_2_is_offset(self):
+        # February is an anchor, not a frequency.
+        assert has_offset("0 0 1 2 *") is True
+
+    def test_pinned_month_over_open_dom_is_offset(self):
+        # "every day, but only in January" — a gap in the staircase.
+        assert has_offset("0 0 * 1 *") is True
+
+    def test_stepped_hour_over_open_minute_is_offset(self):
+        # a constrained coarse field above a fully open finer one.
+        assert has_offset("* */2 * * *") is True
+
+    def test_weekly_is_not_offset(self):
+        # day-of-week is the orthogonal weekly axis, exempt from the staircase.
+        assert has_offset("0 0 * * 0") is False
+
 
 class TestEnvVarCron:
     def test_valid_cron(self):
@@ -81,6 +104,14 @@ class TestEnvVarIntervalExpression:
     def test_valid_no_offset(self):
         with patch.dict("os.environ", {"MY_CRON": "0 */2 * * *"}):
             assert env_var_interval_expression("MY_CRON") == "0 */2 * * *"
+
+    def test_yearly_alias_resolves(self):
+        with patch.dict("os.environ", {"MY_CRON": "@yearly"}):
+            assert env_var_interval_expression("MY_CRON") == "0 0 1 1 *"
+
+    def test_yearly_raw_cron_is_accepted(self):
+        with patch.dict("os.environ", {"MY_CRON": "0 0 1 1 *"}):
+            assert env_var_interval_expression("MY_CRON") == "0 0 1 1 *"
 
     def test_raises_on_offset(self):
         with patch.dict("os.environ", {"MY_CRON": "0 2 * * *"}):

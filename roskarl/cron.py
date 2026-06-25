@@ -3,39 +3,80 @@ from icron import croniter
 from roskarl.env import env_var_custom
 
 
-def _field_has_offset(field: str, allow_one: bool = False) -> bool:
-    if allow_one and field == "1":
-        return False
-    return field != "*" and field != "0" and not field.startswith("*/")
+def _field_kind(field: str, *, ones_allowed: bool) -> str:
+    """Classify one cron field for interval-expression validation:
+
+    'open'   — '*': no constraint on this field.
+    'closed' — '*/N' (a step), or the field's natural zero boundary: '0', or
+               '1' for the 1-indexed day-of-month / month fields (which have no
+               zero). Constrains the field but still aligns to the period start.
+    'offset' — anything else (a specific point, e.g. '2' or '2/2') — anchors to
+               a moment rather than expressing a frequency.
+    """
+    if field == "*":
+        return "open"
+    if field.startswith("*/"):
+        return "closed"
+    if field == "0" or (ones_allowed and field == "1"):
+        return "closed"
+    return "offset"
 
 
 def has_offset(expr: str) -> bool:
     """
-    Returns True if any field in the cron expression has an offset.
-    A field has an offset if it is not '*', '0', or '*/N'.
+    Returns True if the cron expression anchors to a specific point in time
+    rather than expressing a zero-aligned interval frequency.
 
-    Exception: the day-of-month field also allows '1'. Days are 1-indexed in cron,
-    so '1' is the natural interval boundary for month-aligned schedules — analogous
-    to '0' in the hour or minute field. This makes '@monthly' (0 0 1 * *) valid.
+    An expression is offset-free when both hold:
+
+    1. Per field: every field is '*', '*/N', or its natural zero boundary — '0'
+       for the 0-indexed second/minute/hour/weekday fields, and '1' for the
+       1-indexed day-of-month and month fields (which have no zero). That '1'
+       boundary is what makes '@monthly' (0 0 1 * *) and '@yearly' (0 0 1 1 *)
+       valid; '0' is the boundary on second/minute/hour.
+
+    2. Contiguous from the finest field up: in the second→month hierarchy, once a
+       field is fully open ('*'), every coarser field must be open too. You can't
+       pin a coarse field while a finer one is wild — e.g. '0 0 * 1 *' ("every
+       day, but only in January") is not an interval. Day-of-week is an orthogonal
+       axis (it carries the weekly alignment) and is exempt from the hierarchy.
     """
     fields = expr.split()
-    dom_index = 2 if len(fields) == 5 else 3
-    return any(
-        _field_has_offset(f, allow_one=(i == dom_index)) for i, f in enumerate(fields)
-    )
+    # second minute hour dom month dow (6-field) | minute hour dom month dow (5)
+    dom_index = 3 if len(fields) == 6 else 2
+    month_index = dom_index + 1
+
+    # 1) every field must be a zero-aligned boundary, a step, or open.
+    for i, field in enumerate(fields):
+        ones_allowed = i in (dom_index, month_index)
+        if _field_kind(field, ones_allowed=ones_allowed) == "offset":
+            return True
+
+    # 2) the constrained fields must be contiguous from the finest up — once a
+    #    field opens up, nothing coarser (through month) may be pinned/stepped.
+    #    Day-of-week (the last field) is excluded: it's a separate axis.
+    seen_open = False
+    for i in range(month_index + 1):
+        if fields[i] == "*":
+            seen_open = True
+        elif seen_open:
+            return True
+    return False
 
 
 IntervalExpression = Annotated[str, "5-field cron expression with no offset fields"]
 """
-A subset of 5-field cron expressions that only allows interval-based scheduling with no offset.
-Valid fields are limited to '*', '0', or '*/N', ensuring the schedule aligns to zero (e.g. '0 */2 * * *').
-Intended to express interval frequency, not a specific point in time.
+A subset of 5-field cron expressions that only express a zero-aligned interval frequency,
+not a specific point in time. Each field must be '*', '*/N', or its natural zero boundary
+('0', or '1' for the 1-indexed day-of-month and month fields, which have no zero). The
+constrained fields must also be contiguous from the finest up: once a field is '*', every
+coarser field must be too (day-of-week is exempt — it carries the weekly alignment).
 
-The day-of-month field additionally allows '1'. Since cron days are 1-indexed (there is no day 0),
-'1' is the natural interval boundary — equivalent to '0' in hour/minute — and is what enables '@monthly'.
+The '1' boundary on day-of-month and month is what enables '@monthly' (0 0 1 * *) and
+'@yearly' (0 0 1 1 *); '0' is the boundary on minute/hour.
 
-Valid:   '* * * * *', '0 * * * *', '0 */2 * * *', '0 */6 */2 * *', '0 0 1 * *'
-Invalid: '0 2 * * *', '0 2/2 * * *', '5 * * * *', '0 */2 2 * *'
+Valid:   '* * * * *', '0 * * * *', '0 */2 * * *', '0 */6 */2 * *', '0 0 1 * *', '0 0 1 1 *'
+Invalid: '0 2 * * *', '0 2/2 * * *', '5 * * * *', '0 */2 2 * *', '0 0 * 1 *'
 """
 
 INTERVAL_EXPRESSION_SHORTCUTS: dict[str, IntervalExpression] = {
@@ -49,21 +90,25 @@ INTERVAL_EXPRESSION_SHORTCUTS: dict[str, IntervalExpression] = {
     "@week": "0 0 * * 0",
     "@monthly": "0 0 1 * *",
     "@month": "0 0 1 * *",
+    "@yearly": "0 0 1 1 *",
+    "@annually": "0 0 1 1 *",
 }
 
 IntervalExpressionExtended = Annotated[
     str, "6-field cron expression with no offset fields"
 ]
 """
-A subset of 6-field cron expressions (second minute hour day month weekday) that only
-allows interval-based scheduling with no offset. Extends IntervalExpression with a seconds field,
-enabling sub-minute granularity.
+A subset of 6-field cron expressions (second minute hour day month weekday) that only express
+a zero-aligned interval frequency. Same rules as IntervalExpression with an added seconds field
+for sub-minute granularity: each field is '*', '*/N', or its zero boundary ('0', or '1' for the
+1-indexed day-of-month / month fields), and the constrained fields are contiguous from seconds up
+(day-of-week exempt).
 
-The day-of-month field additionally allows '1'. Since cron days are 1-indexed (there is no day 0),
-'1' is the natural interval boundary — equivalent to '0' in hour/minute — and is what enables '@monthly'.
+The '1' boundary on day-of-month and month is what enables '@monthly' (0 0 0 1 * *) and
+'@yearly' (0 0 0 1 1 *).
 
-Valid:   '* * * * * *', '0 * * * * *', '0 0 * * * *', '0 0 0 * * 0', '0 0 0 1 * *'
-Invalid: '5 * * * * *', '0 2 * * * *'
+Valid:   '* * * * * *', '0 * * * * *', '0 0 * * * *', '0 0 0 * * 0', '0 0 0 1 * *', '0 0 0 1 1 *'
+Invalid: '5 * * * * *', '0 2 * * * *', '0 0 0 * 1 *'
 """
 
 INTERVAL_EXPRESSION_EXTENDED_SHORTCUTS: dict[str, IntervalExpressionExtended] = {
@@ -79,6 +124,8 @@ INTERVAL_EXPRESSION_EXTENDED_SHORTCUTS: dict[str, IntervalExpressionExtended] = 
     "@week": "0 0 0 * * 0",
     "@monthly": "0 0 0 1 * *",
     "@month": "0 0 0 1 * *",
+    "@yearly": "0 0 0 1 1 *",
+    "@annually": "0 0 0 1 1 *",
 }
 
 
